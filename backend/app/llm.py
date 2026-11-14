@@ -84,3 +84,19 @@ def fast_llm():
         temperature=0,
         streaming=False,
     )
+
+
+def extract_text(content) -> str:
+    """Extract plain text from string or structured content (e.g. ChatGoogleGenerativeAI parts)."""
+    if isinstance(content, str):
+        return content
+    if isinstance(content, list):
+        parts = []
+        for part in content:
+            if isinstance(part, str):
+                parts.append(part)
+            elif isinstance(part, dict):
+                if part.get("type") == "text" or "text" in part:
+                    parts.append(part.get("text", ""))
+        return "".join(parts)
+    return ""

@@ -9,6 +9,7 @@ from pydantic import BaseModel, Field
 
 from .. import db, files, memory
 from ..auth import current_user
+from ..llm import extract_text
 
 router = APIRouter()
 
@@ -42,7 +43,7 @@ async def thread_messages(thread_id: str, request: Request, user_id: str = Depen
             current = {"role": "assistant", "content": "", "steps": []}
             result.append(current)
         if isinstance(message, AIMessage):
-            text = message.content if isinstance(message.content, str) else ""
+            text = extract_text(message.content)
             if message.tool_calls:
                 if text:
                     current["steps"].append({"type": "note", "content": text})

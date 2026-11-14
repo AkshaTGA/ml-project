@@ -18,8 +18,8 @@ from pydantic import BaseModel
 from .. import memory
 from ..agent import build_user_message
 from ..auth import current_user
-from ..config import LLM_API_KEY
-from ..llm import fast_llm
+from ..config import IS_LLM_CONFIGURED
+from ..llm import extract_text, fast_llm
 
 log = logging.getLogger("agriassist.chat")
 router = APIRouter()
@@ -57,8 +57,8 @@ async def chat(body: ChatRequest, request: Request, user_id: str = Depends(curre
               "recursion_limit": 30}
 
     async def run(emit):
-        if not LLM_API_KEY:
-            emit({"type": "error", "message": "LLM_API_KEY is not set in backend/.env"})
+        if not IS_LLM_CONFIGURED:
+            emit({"type": "error", "message": "No LLM API key configured in backend/.env"})
             emit({"type": "done"})
             return
         started = time.perf_counter()
@@ -78,9 +78,10 @@ async def chat(body: ChatRequest, request: Request, user_id: str = Depends(curre
                         continue
                     if body.verbose and (thinking := _reasoning(message)):
                         emit({"type": "thinking", "content": thinking})
-                    if isinstance(message.content, str) and message.content:
+                    text = extract_text(message.content)
+                    if text:
                         timing.setdefault("first_token_ms", ms())
-                        emit({"type": "token", "content": message.content})
+                        emit({"type": "token", "content": text})
                     continue
                 for node, update in chunk.items():
                     update = update or {}

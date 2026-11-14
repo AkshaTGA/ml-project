@@ -169,9 +169,12 @@ def transcript(messages, limit_chars: int = 6000) -> str:
         if isinstance(m, HumanMessage):
             text = m.additional_kwargs.get("display_text") or (m.content if isinstance(m.content, str) else "")
             lines.append(f"User: {text}")
-        elif isinstance(m, AIMessage) and isinstance(m.content, str) and m.content:
-            # Visual ```ui blocks are JSON for the screen; keep the summary to the words.
-            lines.append("Assistant: " + re.sub(r"```ui.*?(```|$)", "[visual]", m.content, flags=re.S))
+        elif isinstance(m, AIMessage):
+            from .llm import extract_text
+            content_str = extract_text(m.content)
+            if content_str:
+                # Visual ```ui blocks are JSON for the screen; keep the summary to the words.
+                lines.append("Assistant: " + re.sub(r"```ui.*?(```|$)", "[visual]", content_str, flags=re.S))
         elif isinstance(m, ToolMessage):
             lines.append(f"[tool {m.name}: {str(m.content)[:300]}]")
     return "\n".join(lines)[-limit_chars:]
