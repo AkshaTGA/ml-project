@@ -1,11 +1,10 @@
 import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
-import { motion } from 'motion/react'
 import {
-  AlertTriangle, ArrowRight, ArrowUp, Camera, ChevronRight, CloudRain, CloudSun, Droplets, IndianRupee, Info,
+  AlertTriangle, ArrowUp, Camera, CloudRain, CloudSun, Droplets, IndianRupee, Info,
   MapPin, MessageSquare, Sprout, Thermometer, Wind,
 } from 'lucide-react'
-import { FarmScene, WheatArt } from '../components/FarmScene'
+import { FarmScene } from '../components/FarmScene'
 import { VoiceField } from '../components/common'
 import { useApi } from '../lib/api'
 import { useAppData } from '../lib/appData'
@@ -22,21 +21,29 @@ export const WEATHER = (code) => {
   return ['⛈️', 'Thunderstorm']
 }
 
-const soft = 'rounded-[28px] bg-surface shadow-[0_10px_30px_-18px_rgba(40,70,30,0.35)]'
-const rise = (i) => ({ initial: { opacity: 0, y: 16 }, animate: { opacity: 1, y: 0 }, transition: { delay: i * 0.05, duration: 0.4 } })
-
-function Skeleton({ className }) {
-  return <div className={`animate-pulse rounded-[28px] bg-surface-2 ${className}`} />
+function usefulFact(value) {
+  if (value == null) return ''
+  const text = String(value).trim()
+  if (!text || /^(don'?t know|unknown|not sure|n\/?a|none|na|-)$/i.test(text)) return ''
+  return text
 }
 
-function WeatherCard({ weather, location }) {
+function Panel({ className = '', children }) {
+  return <section className={`rounded-2xl p-5 sm:p-6 ${className}`}>{children}</section>
+}
+
+function Kicker({ children }) {
+  return <p className="text-[11px] font-bold tracking-[0.16em] uppercase opacity-70">{children}</p>
+}
+
+function WeatherPanel({ weather, location }) {
   if (!weather) {
     return (
-      <div className={`${soft} flex min-h-44 flex-col justify-center p-6`}>
-        <MapPin className="text-brand" />
-        <p className="mt-2 text-sm text-muted">Add your farm location in My Farm to see the weather here.</p>
-        <Link to="/app/settings?tab=profile" className="mt-3 text-sm font-semibold text-brand-strong">Add location</Link>
-      </div>
+      <Panel className="flex h-full flex-col justify-center bg-sky-soft text-ink">
+        <Kicker>Weather</Kicker>
+        <p className="mt-3 max-w-sm text-sm">Add your farm location in My Farm to see the forecast here.</p>
+        <Link to="/app/settings?tab=profile" className="mt-4 text-sm font-semibold text-sky">Add location</Link>
+      </Panel>
     )
   }
   const c = weather.current || {}
@@ -44,87 +51,84 @@ function WeatherCard({ weather, location }) {
   const [icon, label] = WEATHER(c.weather_code ?? d.weather_code?.[0] ?? 0)
   const temp = c.temperature_2m == null ? '–' : Math.round(c.temperature_2m)
   return (
-    <div className={`${soft} flex min-h-44 flex-col p-6`}>
-      <div className="flex items-start gap-4">
-        <span className="text-5xl leading-none">{icon}</span>
-        <div className="min-w-0">
-          <div className="flex items-center gap-1.5 text-sm text-muted"><MapPin size={14} /> {location || 'Your farm'}</div>
-          <div className="mt-1 font-display text-5xl font-bold tracking-tight text-ink">{temp}°C</div>
-          <div className="text-muted">{label}</div>
+    <Panel className="flex h-full flex-col bg-sky-soft text-ink">
+      <div className="flex items-end justify-between gap-4">
+        <div>
+          <Kicker><span className="inline-flex items-center gap-1 normal-case tracking-normal"><MapPin size={12} /> {location || 'Your farm'}</span></Kicker>
+          <div className="mt-2 flex items-end gap-3">
+            <span className="text-6xl leading-none font-bold tracking-tight">{temp}°</span>
+            <span className="mb-1 text-3xl">{icon}</span>
+          </div>
+          <p className="mt-2 text-sm font-medium">{label}</p>
         </div>
-      </div>
-      <div className="mt-4 flex flex-wrap gap-4 text-sm text-muted">
-        {c.relative_humidity_2m != null && <span className="flex items-center gap-1"><Droplets size={14} /> {c.relative_humidity_2m}%</span>}
-        {c.wind_speed_10m != null && <span className="flex items-center gap-1"><Wind size={14} /> {c.wind_speed_10m} km/h</span>}
-        {c.precipitation != null && <span className="flex items-center gap-1"><CloudRain size={14} /> {c.precipitation} mm</span>}
+        <ul className="space-y-1 text-right text-sm">
+          {c.relative_humidity_2m != null && <li className="flex items-center justify-end gap-1.5"><Droplets size={13} /> {c.relative_humidity_2m}%</li>}
+          {c.wind_speed_10m != null && <li className="flex items-center justify-end gap-1.5"><Wind size={13} /> {c.wind_speed_10m} km/h</li>}
+          {c.precipitation != null && <li className="flex items-center justify-end gap-1.5"><CloudRain size={13} /> {c.precipitation} mm</li>}
+        </ul>
       </div>
       {!!d.time?.length && (
-        <div className="mt-4 grid grid-cols-7 gap-1 border-t border-line/80 pt-3">
+        <div className="mt-6 grid grid-cols-7 border-t border-sky/20 pt-4">
           {d.time.map((day, i) => (
-            <div key={day} className="text-center text-xs text-muted">
-              <div>{new Date(day).toLocaleDateString(undefined, { weekday: 'narrow' })}</div>
-              <div className="my-1 text-base">{WEATHER(d.weather_code?.[i] ?? 0)[0]}</div>
-              <div className="font-semibold text-ink">{Math.round(d.temperature_2m_max?.[i] ?? 0)}°</div>
+            <div key={day} className="text-center">
+              <div className="text-[11px] font-semibold opacity-60">{new Date(day).toLocaleDateString(undefined, { weekday: 'short' })}</div>
+              <div className="my-1 text-lg leading-none">{WEATHER(d.weather_code?.[i] ?? 0)[0]}</div>
+              <div className="text-sm font-bold">{Math.round(d.temperature_2m_max?.[i] ?? 0)}°</div>
             </div>
           ))}
         </div>
       )}
-    </div>
+    </Panel>
   )
 }
 
-function FarmCard({ profile, onAsk, t }) {
+function FarmPanel({ profile, onAsk, t }) {
   const crops = profile?.crops || []
   const animals = Object.entries(profile?.livestock || {}).filter(([, n]) => n)
   const headline = crops[0] || (animals[0] ? `${animals[0][1]} ${animals[0][0]}` : null)
   const facts = [
     profile?.land_area && `${profile.land_area} ${profile.land_unit || 'acre'}`,
-    profile?.soil,
-    profile?.irrigation,
+    usefulFact(profile?.soil),
+    usefulFact(profile?.irrigation),
     animals.map(([a, n]) => `${n} ${a}`).join(', '),
   ].filter(Boolean)
   const ask = (name) => onAsk(t('cropAskPrompt').replace('{crop}', name))
-  const art = <WheatArt className="pointer-events-none absolute -right-2 bottom-0 h-32 w-40 opacity-90" />
 
   if (!headline) {
     return (
-      <Link to="/app/settings?tab=profile" className={`${soft} relative flex min-h-44 flex-col justify-center overflow-hidden p-6`}>
-        <div className="text-sm text-muted">{t('onYourFarm')}</div>
-        <div className="mt-1 font-display text-3xl font-bold text-ink">Your farm</div>
-        <p className="mt-1 max-w-[70%] text-sm text-muted">{t('addYourCrop')}</p>
-        {art}
+      <Link to="/app/settings?tab=profile" className="flex h-full flex-col justify-between rounded-2xl bg-mint p-5 text-brand-strong sm:p-6">
+        <Kicker>{t('onYourFarm')}</Kicker>
+        <div>
+          <div className="text-3xl font-bold">Your farm</div>
+          <p className="mt-2 text-sm">{t('addYourCrop')}</p>
+        </div>
       </Link>
     )
   }
 
   return (
-    <div className={`${soft} relative min-h-44 overflow-hidden p-6`}>
-      <button type="button" onClick={() => ask(crops[0] || headline)} className="block w-full pr-10 text-left">
-        <div className="text-sm text-muted">{t('onYourFarm')}</div>
-        <div className="mt-1 max-w-[70%] font-display text-4xl font-bold tracking-tight text-ink">{headline}</div>
-        <p className="mt-1 max-w-[68%] text-sm text-muted">{facts.join(' · ') || animals.map(([a, n]) => `${n} ${a}`).join(', ') || 'Ask how it is doing'}</p>
+    <div className="flex h-full flex-col rounded-2xl bg-mint p-5 text-brand-strong sm:p-6">
+      <Kicker>{t('onYourFarm')}</Kicker>
+      <button type="button" onClick={() => ask(crops[0] || headline)} className="mt-4 text-left">
+        <div className="text-4xl font-bold tracking-tight sm:text-5xl">{headline}</div>
+        <p className="mt-2 text-sm opacity-80">{facts.join(' · ') || 'Ask how it is doing'}</p>
       </button>
       {crops.length > 1 && (
-        <div className="mt-3 flex flex-wrap gap-1.5">
+        <div className="mt-4 flex flex-wrap gap-2">
           {crops.slice(1).map((c) => (
             <button key={c} type="button" onClick={() => ask(c)}
-              className="rounded-full bg-brand-soft px-2.5 py-1 text-xs font-semibold text-brand-strong">{c}</button>
+              className="rounded-full bg-white/70 px-3 py-1 text-xs font-semibold">{c}</button>
           ))}
         </div>
       )}
-      {art}
-      <button type="button" aria-label={t('askAssistant')} onClick={() => ask(crops[0] || headline)}
-        className="absolute right-4 top-4 grid size-8 place-items-center rounded-full bg-surface-2 text-muted">
-        <ChevronRight size={18} />
+      <button type="button" onClick={() => ask(crops[0] || headline)}
+        className="mt-auto w-fit pt-8 text-sm font-bold underline decoration-brand/40 underline-offset-4">
+        Ask about {headline}
       </button>
     </div>
   )
 }
 
-const ALERT_STYLE = {
-  warning: 'border-gold/40 bg-gold-soft text-gold',
-  info: 'border-sky/30 bg-sky-soft text-sky',
-}
 const ALERT_ICON = { rain: CloudRain, heat: Thermometer, frost: Thermometer, irrigation: Droplets }
 
 export default function Dashboard() {
@@ -138,110 +142,120 @@ export default function Dashboard() {
   useEffect(() => { api.dashboard().then(setData).catch(() => setData({})) }, [api])
 
   const startChat = (state) => navigate('/app/chat', { state })
+  const today = new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })
 
   const actions = [
-    { icon: Sprout, label: t('cropAdvice'), bg: 'bg-mint', color: 'text-brand-strong', state: { prompt: t('cropAdvicePrompt') } },
-    { icon: Camera, label: t('scanLeaf'), bg: 'bg-sand', color: 'text-sand-ink', state: { action: 'scan' } },
-    { icon: CloudSun, label: t('weather'), bg: 'bg-sky-tile', color: 'text-sky', state: { prompt: t('weatherPrompt') } },
-    { icon: IndianRupee, label: t('mandiPrices'), bg: 'bg-lilac', color: 'text-lilac-ink', state: { prompt: t('mandiPrompt') } },
+    { icon: Sprout, label: t('cropAdvice'), tint: 'text-brand-strong', state: { prompt: t('cropAdvicePrompt') } },
+    { icon: Camera, label: t('scanLeaf'), tint: 'text-sand-ink', state: { action: 'scan' } },
+    { icon: CloudSun, label: t('weather'), tint: 'text-sky', state: { prompt: t('weatherPrompt') } },
+    { icon: IndianRupee, label: t('mandiPrices'), tint: 'text-lilac-ink', state: { prompt: t('mandiPrompt') } },
   ]
 
   return (
     <div className="scroll-thin h-full overflow-y-auto">
-      <div className="mx-auto max-w-6xl px-4 pb-16 pt-16 sm:px-8 sm:pt-8">
-        <div className="grid items-center gap-6 lg:grid-cols-[1.15fr_0.85fr]">
-          <motion.div {...rise(0)} className="order-2 lg:order-1">
-            <h1 className="font-display text-4xl font-bold tracking-tight text-brand-strong sm:text-5xl">
-              {t('namaste')}{profile?.name ? `, ${profile.name}` : ''} 👋
+      <div className="mx-auto max-w-6xl px-4 pt-14 pb-16 sm:px-8 sm:pt-8">
+        <header className="grid items-end gap-6 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            <p className="text-sm font-semibold text-brand">{today}</p>
+            <h1 className="mt-2 text-4xl font-bold tracking-tight text-ink sm:text-6xl sm:leading-[0.95]">
+              {t('namaste')}{profile?.name ? `, ${profile.name}` : ''}
             </h1>
-            <p className="mt-2 text-lg text-muted">{t('helpToday')}</p>
-            <motion.form {...rise(1)} onSubmit={(e) => { e.preventDefault(); if (ask.trim()) startChat({ prompt: ask }) }}
-              className="mt-6 flex min-h-[5.25rem] items-center gap-2 rounded-full bg-ask py-2 pr-2 pl-3 shadow-[0_12px_32px_-18px_rgba(36,107,48,0.55)]">
-              <VoiceField plain micFirst value={ask} onChange={setAsk} placeholder={t('askByVoice')} className="flex-1" />
-              <button type="submit" disabled={!ask.trim()} aria-label={t('send')}
-                className="grid size-12 shrink-0 place-items-center rounded-full bg-brand text-white transition hover:bg-brand-strong disabled:opacity-40">
-                <ArrowUp size={22} />
-              </button>
-            </motion.form>
-          </motion.div>
-          <motion.div {...rise(0)} className="order-1 h-48 overflow-hidden rounded-[32px] shadow-sm lg:order-2 lg:h-72">
+            <p className="mt-3 max-w-md text-lg text-muted">{t('helpToday')}</p>
+          </div>
+          <div className="h-36 overflow-hidden rounded-tl-[3.5rem] rounded-br-[3.5rem] lg:col-span-5 lg:h-44">
             <FarmScene className="h-full w-full" />
-          </motion.div>
+          </div>
+        </header>
+
+        <form onSubmit={(e) => { e.preventDefault(); if (ask.trim()) startChat({ prompt: ask }) }}
+          className="mt-8 flex min-h-16 items-center gap-2 rounded-2xl border border-line bg-surface pr-2 pl-3 shadow-[0_10px_30px_-24px_rgba(30,60,24,0.9)]">
+          <VoiceField plain micFirst value={ask} onChange={setAsk} placeholder={t('askByVoice')} className="flex-1" inputClassName="text-base" />
+          <button type="submit" disabled={!ask.trim()} aria-label={t('send')}
+            className="grid size-11 shrink-0 place-items-center rounded-xl bg-brand text-white transition hover:bg-brand-strong disabled:opacity-40">
+            <ArrowUp size={20} />
+          </button>
+        </form>
+
+        <div className="mt-3 grid grid-cols-2 divide-x divide-y divide-line overflow-hidden rounded-2xl border border-line bg-surface sm:grid-cols-4 sm:divide-y-0">
+          {actions.map(({ icon: Icon, label, tint, state }) => (
+            <button key={label} type="button" onClick={() => startChat(state)}
+              className="flex items-center gap-3 px-4 py-4 text-left transition hover:bg-surface-2">
+              <Icon size={18} className={tint} />
+              <span className="font-semibold text-ink">{label}</span>
+            </button>
+          ))}
         </div>
 
-        <div className="mt-8 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-          {actions.map((a, i) => {
-            const Icon = a.icon
-            return (
-              <motion.button {...rise(2 + i)} key={a.label} type="button" whileHover={{ y: -3 }} whileTap={{ scale: 0.98 }}
-                onClick={() => startChat(a.state)}
-                className={`flex min-h-[8.75rem] flex-col items-center justify-center gap-3 rounded-[28px] ${a.bg} px-4 py-5 text-center`}>
-                <Icon size={30} strokeWidth={1.75} className={a.color} />
-                <span className={`text-base font-semibold ${a.color}`}>{a.label}</span>
-              </motion.button>
-            )
-          })}
+        <div className="mt-4 grid items-stretch gap-4 lg:grid-cols-12">
+          <div className="lg:col-span-7">
+            {data ? <WeatherPanel weather={data.weather} location={profile?.location_name} /> : <div className="h-56 animate-pulse rounded-2xl bg-sky-soft" />}
+          </div>
+          <div className="lg:col-span-5">
+            <FarmPanel profile={profile} t={t} onAsk={(prompt) => startChat({ prompt })} />
+          </div>
         </div>
 
-        <div className="mt-6 grid gap-4 lg:grid-cols-2">
-          <motion.div {...rise(6)}>
-            {data ? <WeatherCard weather={data.weather} location={profile?.location_name} /> : <Skeleton className="h-52" />}
-          </motion.div>
-          <motion.div {...rise(7)}>
-            <FarmCard profile={profile} t={t} onAsk={(prompt) => startChat({ prompt })} />
-          </motion.div>
-        </div>
-
-        <div className="mt-4 grid gap-4 lg:grid-cols-3">
-          <motion.div {...rise(8)} className={`${soft} p-5`}>
-            <h2 className="flex items-center gap-2 font-bold"><AlertTriangle size={18} className="text-gold" /> {t('alerts')}</h2>
-            <div className="mt-3 space-y-2">
-              {!data && <><Skeleton className="h-16" /><Skeleton className="h-16" /></>}
-              {data?.alerts?.length === 0 && (
-                <div className="flex items-center gap-2 rounded-2xl bg-brand-soft px-3 py-3 text-sm text-brand-strong"><Info size={16} /> {t('noAlerts')}</div>
-              )}
-              {data?.alerts?.map((a) => {
-                const Icon = ALERT_ICON[a.kind] || Info
-                return (
-                  <div key={a.kind + a.date} className={`rounded-2xl border px-3 py-2.5 ${ALERT_STYLE[a.level] || ALERT_STYLE.info}`}>
-                    <div className="flex items-center gap-2 text-sm font-bold"><Icon size={15} /> {a.title}
-                      <span className="ml-auto text-xs font-medium opacity-75">{new Date(a.date).toLocaleDateString(undefined, { weekday: 'short' })}</span></div>
-                    <p className="mt-0.5 text-sm text-ink/80">{a.message}</p>
+        <section className="mt-4 overflow-hidden rounded-2xl bg-surface ring-1 ring-line">
+          <div className="grid lg:grid-cols-3 lg:divide-x lg:divide-line">
+            <div className="border-b border-line p-5 lg:border-b-0 sm:p-6">
+              <h2 className="flex items-center gap-2 text-sm font-bold"><AlertTriangle size={15} className="text-gold" /> {t('alerts')}</h2>
+              <div className="mt-4 space-y-4">
+                {!data && <p className="text-sm text-muted">Checking the next few days…</p>}
+                {data?.alerts?.length === 0 && (
+                  <div>
+                    <p className="text-2xl font-bold text-brand-strong">Clear</p>
+                    <p className="mt-1 text-sm text-muted">{t('noAlerts')}</p>
                   </div>
-                )
-              })}
+                )}
+                {data?.alerts?.map((a) => {
+                  const Icon = ALERT_ICON[a.kind] || Info
+                  return (
+                    <div key={a.kind + a.date} className="border-l-2 border-gold pl-3">
+                      <div className="flex items-center gap-2 text-sm font-bold"><Icon size={14} className="text-gold" /> {a.title}</div>
+                      <p className="mt-1 text-sm leading-relaxed text-muted">{a.message}</p>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
-          </motion.div>
 
-          <motion.div {...rise(9)} className={`${soft} p-5`}>
-            <h2 className="flex items-center gap-2 font-bold"><IndianRupee size={18} className="text-brand" /> {t('mandi')}</h2>
-            <div className="mt-3 space-y-2">
-              {!data && <><Skeleton className="h-14" /><Skeleton className="h-14" /></>}
-              {data && !data.mandi?.length && <p className="text-sm text-muted">Add your crops in My Farm to track their prices.</p>}
-              {data?.mandi?.map((m) => (
-                <button key={m.commodity} onClick={() => startChat({ prompt: `What is today's mandi price of ${m.commodity} near me? Should I sell now or wait?` })}
-                  className="flex w-full items-center gap-3 rounded-2xl bg-surface-2 px-3 py-2.5 text-left transition hover:bg-surface-3">
-                  <span className="flex-1"><b>{m.commodity}</b>
-                    <span className="block text-xs text-muted">{m.markets?.[0] ? `${m.markets[0].market}, ${m.markets[0].state}` : 'Tap to ask for live prices'}</span></span>
-                  {m.modal ? <span className="text-right font-bold">₹{m.modal.toLocaleString('en-IN')}<span className="block text-[11px] font-normal text-muted">/quintal</span></span>
-                    : <ArrowRight size={16} className="text-muted" />}
-                </button>
-              ))}
+            <div className="border-b border-line p-5 lg:border-b-0 sm:p-6">
+              <h2 className="flex items-center gap-2 text-sm font-bold"><IndianRupee size={15} className="text-brand" /> {t('mandi')}</h2>
+              <div className="mt-4 space-y-1">
+                {!data && <p className="text-sm text-muted">Looking up today’s rates…</p>}
+                {data && !data.mandi?.length && <p className="text-sm text-muted">Add crops in My Farm to follow prices.</p>}
+                {data?.mandi?.map((m) => (
+                  <button key={m.commodity} onClick={() => startChat({ prompt: `What is today's mandi price of ${m.commodity} near me? Should I sell now or wait?` })}
+                    className="flex w-full items-baseline justify-between gap-3 border-b border-line py-3 text-left last:border-0">
+                    <span className="min-w-0">
+                      <b className="block truncate">{m.commodity}</b>
+                      <span className="block truncate text-xs text-muted">{m.markets?.[0] ? `${m.markets[0].market}, ${m.markets[0].state}` : 'Ask for today’s rate'}</span>
+                    </span>
+                    {m.modal
+                      ? <span className="text-lg font-bold text-brand-strong">₹{m.modal.toLocaleString('en-IN')}</span>
+                      : <span className="text-sm font-semibold text-brand">Ask</span>}
+                  </button>
+                ))}
+              </div>
             </div>
-          </motion.div>
 
-          <motion.div {...rise(10)} className={`${soft} p-5`}>
-            <h2 className="flex items-center gap-2 font-bold"><MessageSquare size={18} className="text-brand" /> {t('recentChats')}</h2>
-            <div className="mt-3 space-y-1">
-              {(data?.recent_threads || []).map((th) => (
-                <Link key={th.id} to={`/app/chat/${th.id}`} className="flex items-center gap-2 rounded-xl px-2 py-2 text-sm hover:bg-surface-2">
-                  <MessageSquare size={14} className="text-muted" /><span className="flex-1 truncate">{th.title}</span>
-                </Link>
-              ))}
-              {data && !data.recent_threads?.length && <p className="text-sm text-muted">No questions yet. Ask one above.</p>}
+            <div className="p-5 sm:p-6">
+              <h2 className="flex items-center gap-2 text-sm font-bold"><MessageSquare size={15} className="text-brand" /> {t('recentChats')}</h2>
+              <div className="mt-4 space-y-1">
+                {(data?.recent_threads || []).map((th) => (
+                  <Link key={th.id} to={`/app/chat/${th.id}`} className="block border-b border-line py-3 last:border-0 hover:text-brand-strong">
+                    <span className="line-clamp-2 text-sm leading-snug">{th.title}</span>
+                    {th.updated_at && (
+                      <span className="mt-1 block text-[11px] text-muted">{new Date(th.updated_at).toLocaleDateString(undefined, { day: 'numeric', month: 'short' })}</span>
+                    )}
+                  </Link>
+                ))}
+                {!data && <p className="text-sm text-muted">Loading your questions…</p>}
+                {data && !data.recent_threads?.length && <p className="text-sm text-muted">No questions yet. Ask one above.</p>}
+              </div>
             </div>
-          </motion.div>
-        </div>
+          </div>
+        </section>
       </div>
     </div>
   )

@@ -1,47 +1,32 @@
-/** Soft rural header art: tree, farmhouse, field. Decorative only. */
+/** A quiet field in perspective. Decorative only. */
 export function FarmScene({ className = '' }) {
+  const rows = [168, 182, 198, 216, 236, 258, 282]
   return (
-    <svg viewBox="0 0 520 300" preserveAspectRatio="xMidYMid slice" className={className} aria-hidden>
+    <svg viewBox="0 0 640 300" preserveAspectRatio="xMidYMid slice" className={className} aria-hidden>
       <defs>
-        <linearGradient id="farm-sky" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#c5e6f8" />
-          <stop offset="48%" stopColor="#e5f3e4" />
-          <stop offset="100%" stopColor="#f3f6ef" />
+        <linearGradient id="field-sky" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#d5e7f4" />
+          <stop offset="70%" stopColor="#e7f1e4" />
+          <stop offset="100%" stopColor="#f4f7ef" />
         </linearGradient>
-        <linearGradient id="farm-field" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#9ed56c" />
-          <stop offset="100%" stopColor="#5ea344" />
+        <linearGradient id="field-earth" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#8fbf68" />
+          <stop offset="100%" stopColor="#5f9444" />
         </linearGradient>
       </defs>
-      <rect width="520" height="300" fill="url(#farm-sky)" />
-      <circle cx="438" cy="52" r="36" fill="#f6c445" opacity="0.28" />
-      <circle cx="438" cy="52" r="24" fill="#f6c445" />
-      <g fill="#fff">
-        <ellipse cx="86" cy="58" rx="34" ry="15" />
-        <ellipse cx="112" cy="52" rx="22" ry="13" />
-        <ellipse cx="248" cy="40" rx="26" ry="11" opacity="0.9" />
+      <rect width="640" height="300" fill="url(#field-sky)" />
+      <circle cx="548" cy="58" r="22" fill="#e7c56a" />
+      <path d="M0 118c90-28 170-8 250-22 96-16 150 18 250 4 70-8 110 6 140-6v36H0Z" fill="#d5e8c8" />
+      <path d="M0 146c120-22 210-6 320-18 130-14 210 10 320-4v176H0Z" fill="url(#field-earth)" />
+      <g fill="none" stroke="#3f7a34" strokeWidth="1.15" opacity="0.45">
+        {rows.map((y) => <path key={y} d={`M0 ${y + 18}C220 ${y - 16} 420 ${y - 8} 640 ${y + 10}`} />)}
+        {[-280, -160, -60, 40, 150, 260, 380, 500].map((x) => (
+          <path key={x} d={`M320 132 L${x} 300`} />
+        ))}
       </g>
-      <path d="M0 168C80 138 150 156 214 140c78-18 130 8 196-6 48-10 78 4 110-8v174H0Z" fill="#d7eec6" />
-      <path d="M0 196c90-28 160-8 236-22 86-16 140 16 284-8v134H0Z" fill="url(#farm-field)" />
-      <g fill="none" stroke="#4c8c38" strokeWidth="2" opacity="0.35">
-        <path d="M16 228c150-18 300-8 490 16" />
-        <path d="M8 248c160-16 310-6 504 14" />
-        <path d="M0 268c170-14 320-4 520 12" />
-      </g>
-      <rect x="86" y="148" width="16" height="72" rx="5" fill="#8d5a34" />
-      <circle cx="78" cy="140" r="30" fill="#3d8c40" />
-      <circle cx="112" cy="132" r="34" fill="#4e9c49" />
-      <circle cx="94" cy="112" r="26" fill="#6bb85a" />
-      <circle cx="124" cy="156" r="18" fill="#2f7a38" />
-      <path d="M248 172 332 124l84 48Z" fill="#d4654a" />
-      <path d="M332 124 360 140v-16l-12-8-16 8Z" fill="#b5523c" />
-      <rect x="266" y="172" width="132" height="74" rx="3" fill="#f6e7c4" />
-      <rect x="314" y="204" width="30" height="42" rx="2" fill="#8d5a34" />
-      <rect x="282" y="188" width="24" height="18" rx="2" fill="#f6d56a" />
-      <rect x="356" y="188" width="24" height="18" rx="2" fill="#f6d56a" />
-      <path d="M294 188v18M282 197h24M368 188v18M356 197h24" stroke="#e4bc55" strokeWidth="1.4" />
-      <ellipse cx="250" cy="236" rx="20" ry="11" fill="#3d8c40" />
-      <ellipse cx="414" cy="234" rx="18" ry="11" fill="#2f7a38" />
+      <path d="M86 150c8-46 18-70 22-92 4 22 14 46 22 92" fill="#2f6a38" />
+      <path d="M104 78c6-18 10-28 12-40 2 12 6 22 12 40" fill="#3e7c44" />
+      <path d="M548 156c6-34 12-52 16-68 4 16 10 34 16 68" fill="#2c6234" opacity="0.85" />
     </svg>
   )
 }
