@@ -1,0 +1,122 @@
+@import "tailwindcss";
+
+/* Warm, low-contrast farm palette. Light is the designed look; dark follows the OS. */
+:root {
+  --c-bg: #f3f6ef;
+  --c-surface: #ffffff;
+  --c-surface-2: #eef3e6;
+  --c-surface-3: #e3ecd8;
+  --c-border: #e2e8d8;
+  --c-ink: #1d3322;
+  --c-muted: #6a7564;
+  --c-brand: #3c8f45;
+  --c-brand-strong: #246b30;
+  --c-brand-soft: #d7efc4;
+  --c-ask: #e5f6d8;
+  --c-mint: #d7f0c6;
+  --c-sand: #f6e6c2;
+  --c-sand-ink: #8a5a28;
+  --c-sky-tile: #d7e8fa;
+  --c-lilac: #e7dff8;
+  --c-lilac-ink: #6a4c96;
+  --c-gold: #c4922a;
+  --c-gold-soft: #f8edd4;
+  --c-sky: #3d88c4;
+  --c-sky-soft: #e3f1fb;
+  --c-danger: #c45c4a;
+  --c-danger-soft: #f8e4de;
+  --c-earth: #b8894e;
+  color-scheme: light;
+}
+
+@theme inline {
+  --color-bg: var(--c-bg);
+  --color-surface: var(--c-surface);
+  --color-surface-2: var(--c-surface-2);
+  --color-surface-3: var(--c-surface-3);
+  --color-line: var(--c-border);
+  --color-ink: var(--c-ink);
+  --color-muted: var(--c-muted);
+  --color-brand: var(--c-brand);
+  --color-brand-strong: var(--c-brand-strong);
+  --color-brand-soft: var(--c-brand-soft);
+  --color-gold: var(--c-gold);
+  --color-gold-soft: var(--c-gold-soft);
+  --color-sky: var(--c-sky);
+  --color-sky-soft: var(--c-sky-soft);
+  --color-danger: var(--c-danger);
+  --color-danger-soft: var(--c-danger-soft);
+  --color-earth: var(--c-earth);
+  --color-ask: var(--c-ask);
+  --color-mint: var(--c-mint);
+  --color-sand: var(--c-sand);
+  --color-sand-ink: var(--c-sand-ink);
+  --color-sky-tile: var(--c-sky-tile);
+  --color-lilac: var(--c-lilac);
+  --color-lilac-ink: var(--c-lilac-ink);
+  --font-sans: "Plus Jakarta Sans", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --font-display: "Plus Jakarta Sans", "Noto Sans Devanagari", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --animate-shimmer: shimmer 1.8s linear infinite;
+  --animate-marquee: marquee 40s linear infinite;
+  --animate-float: float 6s ease-in-out infinite;
+}
+
+@keyframes shimmer { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+@keyframes blink { 0%, 80%, 100% { opacity: .25; } 40% { opacity: 1; } }
+
+html, body, #root { height: 100%; }
+body {
+  margin: 0;
+  background:
+    radial-gradient(1000px 460px at 110% -15%, color-mix(in srgb, var(--c-brand-soft) 75%, transparent), transparent 58%),
+    radial-gradient(760px 380px at -12% 8%, color-mix(in srgb, var(--c-sky-soft) 80%, transparent), transparent 52%),
+    var(--c-bg);
+  color: var(--c-ink);
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+button { cursor: pointer; }
+button:disabled { cursor: not-allowed; }
+::selection { background: var(--c-brand-soft); }
+
+/* Shimmering text used for in-progress agent steps */
+.text-shimmer {
+  background: linear-gradient(90deg, var(--c-muted) 0%, var(--c-ink) 40%, var(--c-muted) 80%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 1.8s linear infinite;
+}
+
+.typing-dot { animation: blink 1.2s infinite; }
+.typing-dot:nth-child(2) { animation-delay: .2s; }
+.typing-dot:nth-child(3) { animation-delay: .4s; }
+
+.scroll-thin { scrollbar-width: thin; scrollbar-color: var(--c-border) transparent; }
+.no-scrollbar { scrollbar-width: none; }
+
+/* Agent reply markdown */
+.prose-agri { overflow-wrap: anywhere; line-height: 1.65; }
+.prose-agri > :first-child { margin-top: 0; }
+.prose-agri > :last-child { margin-bottom: 0; }
+.prose-agri p, .prose-agri ul, .prose-agri ol { margin: 0 0 .7em; }
+.prose-agri ul { list-style: disc; padding-left: 1.3em; }
+.prose-agri ol { list-style: decimal; padding-left: 1.3em; }
+.prose-agri li { margin: .2em 0; }
+.prose-agri li::marker { color: var(--c-brand); }
+.prose-agri h1, .prose-agri h2, .prose-agri h3 { font-weight: 700; font-size: 1.02em; margin: 1em 0 .4em; }
+.prose-agri strong { font-weight: 700; color: var(--c-ink); }
+.prose-agri a { color: var(--c-brand); text-decoration: underline; text-underline-offset: 2px; }
+.prose-agri code { background: var(--c-surface-2); padding: .1em .35em; border-radius: 6px; font-size: .88em; }
+.prose-agri pre { background: var(--c-surface-2); padding: .8em; border-radius: 12px; overflow-x: auto; }
+.prose-agri pre code { background: none; padding: 0; }
+.prose-agri table { border-collapse: collapse; margin: .4em 0 .9em; display: block; overflow-x: auto; font-size: .93em; }
+.prose-agri th, .prose-agri td { border: 1px solid var(--c-border); padding: .4em .7em; text-align: left; }
+.prose-agri th { background: var(--c-surface-2); font-weight: 600; }
+.prose-agri blockquote { border-left: 3px solid var(--c-brand); padding-left: .8em; color: var(--c-muted); }
+
+/* Clerk widgets inherit our fonts */
+.cl-rootBox { font-family: var(--font-sans); }

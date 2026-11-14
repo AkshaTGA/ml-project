@@ -1,0 +1,20 @@
+# --- LLM (any OpenAI-compatible API; defaults to xAI Grok) ---
+LLM_API_KEY=your-xai-api-key
+LLM_BASE_URL=https://api.x.ai/v1
+LLM_MODEL=grok-4
+LLM_TEMPERATURE=0.3
+# Set to false if the model can't read images
+LLM_VISION=true
+
+# --- Deployed model APIs (full prediction endpoint URLs) ---
+# Leave a URL empty to get a hardcoded mock response for that model.
+BIOMASS_API_URL=
+# Multipart field name the biomass API reads the image from
+BIOMASS_IMAGE_FIELD=image
+CROP_API_URL=
+LIVESTOCK_API_URL=
+
+# --- Optional ---
+# Better web search results (falls back to DuckDuckGo when empty)
+TAVILY_API_KEY=
+CORS_ORIGINS=http://localhost:5173
