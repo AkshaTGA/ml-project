@@ -12,8 +12,19 @@ from langgraph.store.postgres.aio import AsyncPostgresStore
 from . import db, memory
 from .agent import build_graph
 from .clients import http
-from .config import (CLERK_PUBLISHABLE_KEY, CORS_ORIGINS, DATA_DIR, EMBEDDING_DIMS, LLM_API_KEY, LLM_MODEL,
-                     MODEL_URLS, SARVAM_API_KEY)
+from .config import (
+    ACTIVE_LLM_MODEL,
+    ACTIVE_PROVIDER,
+    CLERK_PUBLISHABLE_KEY,
+    CORS_ORIGINS,
+    DATA_DIR,
+    EMBEDDING_DIMS,
+    IS_LLM_CONFIGURED,
+    LLM_API_KEY,
+    LLM_MODEL,
+    MODEL_URLS,
+    SARVAM_API_KEY,
+)
 from .embeddings import LocalEmbeddings
 from .routers import chat, dashboard, files, models, profile, threads, voice
 
@@ -47,8 +58,9 @@ for module in (chat, threads, files, models, profile, voice, dashboard):
 def health():
     return {
         "status": "ok",
-        "llm_model": LLM_MODEL,
-        "llm_configured": bool(LLM_API_KEY),
+        "provider": ACTIVE_PROVIDER,
+        "llm_model": ACTIVE_LLM_MODEL,
+        "llm_configured": IS_LLM_CONFIGURED,
         "auth_configured": bool(CLERK_PUBLISHABLE_KEY),
         "voice_configured": bool(SARVAM_API_KEY),
         "models": {model_id: "connected" if url else "mock" for model_id, url in MODEL_URLS.items()},
