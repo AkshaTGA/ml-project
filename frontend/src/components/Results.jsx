@@ -3,17 +3,19 @@ import { Component, useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { AlertTriangle, ExternalLink, FlaskConical, Leaf, ShieldCheck } from 'lucide-react'
 import { useApi } from '../lib/api'
-import { WEATHER } from '../pages/Dashboard'
+import { weatherKey, WeatherIcon } from '../pages/Dashboard'
+import { useI18n } from '../lib/i18n'
 
 const BIOMASS = [
-  ['Dry_Green_g', 'Green', 'bg-brand'], ['Dry_Clover_g', 'Clover', 'bg-[#8bc34a]'], ['Dry_Dead_g', 'Dead', 'bg-earth'],
-  ['GDM_g', 'Green dry matter', 'bg-[#4f9a3a]'], ['Dry_Total_g', 'Total', 'bg-brand-strong'],
+  ['Dry_Green_g', 'greenLabel', 'bg-brand'], ['Dry_Clover_g', 'cloverLabel', 'bg-[#7da84a]'], ['Dry_Dead_g', 'deadLabel', 'bg-earth'],
+  ['GDM_g', 'gdmLabel', 'bg-[#5d8a45]'], ['Dry_Total_g', 'totalLabel', 'bg-brand-strong'],
 ]
 
 export function ModeBadge({ mode }) {
+  const { t } = useI18n()
   return mode === 'mock'
-    ? <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[10px] font-bold tracking-wide text-gold uppercase">mock</span>
-    : <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold tracking-wide text-brand uppercase">live</span>
+    ? <span className="rounded-full bg-gold-soft px-2 py-0.5 text-[10px] font-bold tracking-wide text-gold uppercase">{t('mockMode')}</span>
+    : <span className="rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold tracking-wide text-brand uppercase">{t('liveMode')}</span>
 }
 
 function Bars({ rows, max, unit = '', digits = 1, stacked = false }) {
@@ -40,13 +42,14 @@ const Head = ({ title, mode }) => (
 const Note = ({ children }) => children ? <p className="mt-3 text-xs text-muted">{children}</p> : null
 
 const GREEN_FEATURES = [
-  ['exg_mean', 'ExG mean'],
-  ['exg_std', 'ExG std'],
-  ['exg_top10', 'ExG top 10%'],
-  ['gndvi_mean', 'GNDVI'],
+  ['exg_mean', 'exgMean'],
+  ['exg_std', 'exgStd'],
+  ['exg_top10', 'exgTop10'],
+  ['gndvi_mean', 'gndviMean'],
 ]
 
 function GradcamImage({ fileId, alt }) {
+  const { t } = useI18n()
   const api = useApi()
   const [src, setSrc] = useState('')
   const [failed, setFailed] = useState(false)
@@ -63,38 +66,40 @@ function GradcamImage({ fileId, alt }) {
       if (url) URL.revokeObjectURL(url)
     }
   }, [api, fileId])
-  if (failed) return <p className="mt-3 text-xs text-danger">Could not load the Grad-CAM image.</p>
+  if (failed) return <p className="mt-3 text-xs text-danger">{t('gradcamFail')}</p>
   if (!src) return <div className="mt-3 h-48 animate-pulse rounded-2xl bg-surface-2" />
   return <img src={src} alt={alt} className="mt-3 w-full rounded-2xl border border-line object-cover" />
 }
 
 function BiomassResult({ data }) {
+  const { t } = useI18n()
   const predictions = data.predictions || (data.target != null && data.prediction != null ? { [data.target]: data.prediction } : null)
   if (!predictions || !Object.keys(predictions).length) return <Raw data={data} />
   const keys = Object.keys(predictions)
   const single = keys.length === 1
-  const label = data.label || BIOMASS.find(([key]) => key === keys[0])?.[1] || keys[0]
+  const labelKey = BIOMASS.find(([key]) => key === keys[0])?.[1]
+  const label = labelKey ? t(labelKey) : (data.label || keys[0])
   return (
     <div>
-      <Head title={single ? label : 'Dry biomass (g per quadrat)'} mode={data.mode} />
+      <Head title={single ? label : t('dryBiomassTitle')} mode={data.mode} />
       {single ? (
         <>
           <div className="text-4xl font-bold tabular-nums">
             {Number(predictions[keys[0]]).toFixed(2)}
             <span className="ml-1 text-base font-semibold text-muted">g</span>
           </div>
-          <p className="text-xs text-muted">{data.units || 'grams of dry matter per sample quadrat'}</p>
+          <p className="text-xs text-muted">{data.units || t('gramsPerQuadrat')}</p>
           {data.gradcam_file_id && <GradcamImage key={data.gradcam_file_id} fileId={data.gradcam_file_id} alt={`Grad-CAM overlay for ${label}`} />}
           {data.gradcam_summary && <p className="mt-2 text-xs text-muted">{data.gradcam_summary}</p>}
         </>
       ) : (
-        <Bars rows={BIOMASS.filter(([key]) => predictions[key] != null).map(([key, name, color]) => ({ label: name, value: predictions[key], color }))} unit=" g" />
+        <Bars rows={BIOMASS.filter(([key]) => predictions[key] != null).map(([key, name, color]) => ({ label: t(name), value: predictions[key], color }))} unit=" g" />
       )}
       {data.green_features && (
         <div className="mt-3 grid grid-cols-2 gap-2">
           {GREEN_FEATURES.filter(([key]) => data.green_features[key] != null).map(([key, name]) => (
             <div key={key} className="rounded-2xl bg-surface-2 px-3 py-2">
-              <div className="text-[11px] text-muted">{name}</div>
+              <div className="text-[11px] text-muted">{t(name)}</div>
               <div className="font-semibold tabular-nums">{Number(data.green_features[key]).toFixed(2)}</div>
             </div>
           ))}
@@ -106,9 +111,10 @@ function BiomassResult({ data }) {
 }
 
 function CropResult({ data }) {
+  const { t } = useI18n()
   return (
     <div>
-      <Head title="Recommended crops" mode={data.mode} />
+      <Head title={t('recommendedCrops')} mode={data.mode} />
       <Bars rows={data.recommendations.map((r) => ({ label: r.crop, value: r.confidence * 100 }))} max={100} unit="%" digits={0} />
       <Note>{data.note}</Note>
     </div>
@@ -118,20 +124,21 @@ function CropResult({ data }) {
 const RISK = { high: 'bg-danger-soft text-danger', medium: 'bg-gold-soft text-gold', low: 'bg-brand-soft text-brand' }
 
 function YieldResult({ data }) {
+  const { t } = useI18n()
   const stats = [
-    ['previous_yield', `Previous (${data.previous_year || 'last'})`],
-    ['historical_mean_3', 'Mean of last 3'],
-    ['years_since_previous', 'Years since then'],
-    ['history_count', 'Earlier records'],
+    ['previous_yield', t('prevYield', { year: data.previous_year || t('lastWord') })],
+    ['historical_mean_3', t('meanLast3')],
+    ['years_since_previous', t('yearsSince')],
+    ['history_count', t('earlierRecords')],
   ]
   return (
     <div>
-      <Head title={data.label || 'Crop yield'} mode={data.mode} />
+      <Head title={data.label || t('toolYield')} mode={data.mode} />
       <div className="text-4xl font-bold tabular-nums">
         {Number(data.prediction).toFixed(2)}
         <span className="ml-1 text-base font-semibold text-muted">t/ha</span>
       </div>
-      <p className="text-xs text-muted">{data.units || 'tonnes per hectare'}</p>
+      <p className="text-xs text-muted">{data.units || t('tonnesPerHa')}</p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {stats.map(([key, label]) => (
           <div key={key} className="rounded-2xl bg-surface-2 px-3 py-2">
@@ -146,20 +153,21 @@ function YieldResult({ data }) {
 }
 
 function SoilResult({ data }) {
+  const { t } = useI18n()
   const units = data.units || {}
   const medians = data.group_medians || {}
   const inputs = data.inputs || {}
   return (
     <div>
-      <Head title={data.label || 'Soil profile'} mode={data.mode} />
+      <Head title={data.label || t('modelSoil')} mode={data.mode} />
       <p className="text-sm">{data.summary}</p>
-      <p className="mt-1 text-xs text-muted">{data.sample_count} similar samples in this group</p>
+      <p className="mt-1 text-xs text-muted">{t('similarSamples', { count: data.sample_count })}</p>
       <div className="mt-3 grid grid-cols-2 gap-2">
         {Object.keys(inputs).map((name) => (
           <div key={name} className="rounded-2xl bg-surface-2 px-3 py-2">
             <div className="text-[11px] text-muted">{name}{units[name] ? ` · ${units[name]}` : ''}</div>
             <div className="font-semibold tabular-nums">{inputs[name]}</div>
-            {medians[name] != null && <div className="text-[11px] text-muted">Group median {medians[name]}</div>}
+            {medians[name] != null && <div className="text-[11px] text-muted">{t('groupMedian', { value: medians[name] })}</div>}
           </div>
         ))}
       </div>
@@ -169,15 +177,17 @@ function SoilResult({ data }) {
 }
 
 function LivestockResult({ data }) {
+  const { t } = useI18n()
+  const risk = { high: t('highRisk'), medium: t('mediumRisk'), low: t('lowRisk') }[data.risk_level] || t('mediumRisk')
   return (
     <div>
       <div className="mb-3 flex items-center justify-between">
-        <span className={`rounded-full px-3 py-1 text-sm font-bold capitalize ${RISK[data.risk_level] || RISK.medium}`}>{data.risk_level} risk</span>
+        <span className={`rounded-full px-3 py-1 text-sm font-bold capitalize ${RISK[data.risk_level] || RISK.medium}`}>{risk}</span>
         <ModeBadge mode={data.mode} />
       </div>
       {data.possible_conditions?.length
-        ? <Bars stacked rows={data.possible_conditions.map((c) => ({ label: c.condition, value: c.match * 100, color: 'bg-gold' }))} max={100} unit="% match" digits={0} />
-        : <p className="text-sm">No matching conditions.</p>}
+        ? <Bars stacked rows={data.possible_conditions.map((c) => ({ label: c.condition, value: c.match * 100, color: 'bg-gold' }))} max={100} unit={`% ${t('matchWord')}`} digits={0} />
+        : <p className="text-sm">{t('noConditions')}</p>}
       <Note>{data.note}</Note>
     </div>
   )
@@ -194,23 +204,24 @@ function TreatmentList({ icon: Icon, title, items, tone }) {
 }
 
 function DiseaseResult({ data }) {
+  const { t } = useI18n()
   const urgency = { high: 'bg-danger text-white', medium: 'bg-gold text-white', low: 'bg-brand text-white' }[data.urgency]
   return (
     <div>
       <div className="flex flex-wrap items-center gap-2">
-        <span className="text-lg font-bold">{data.healthy ? 'Looks healthy 🌱' : data.disease}</span>
-        {!data.healthy && <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${urgency}`}>{data.urgency} urgency</span>}
+        <span className="inline-flex items-center gap-1.5 text-lg font-bold">{data.healthy && <Leaf size={18} className="text-brand" />}{data.healthy ? t('looksHealthy') : data.disease}</span>
+        {!data.healthy && <span className={`rounded-full px-2.5 py-0.5 text-xs font-bold capitalize ${urgency}`}>{data.urgency} {t('urgencyWord')}</span>}
       </div>
-      <div className="mt-1 text-sm text-muted">{data.crop} · {Math.round(data.confidence * 100)}% confident</div>
+      <div className="mt-1 text-sm text-muted">{data.crop} · {Math.round(data.confidence * 100)}% {t('confidentWord')}</div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-surface-2">
         <motion.div className="h-full rounded-full bg-brand" initial={{ width: 0 }} animate={{ width: `${data.confidence * 100}%` }} />
       </div>
-      {data.symptoms_seen?.length > 0 && <p className="mt-3 text-[13px]"><b>Seen:</b> {data.symptoms_seen.join(', ')}</p>}
+      {data.symptoms_seen?.length > 0 && <p className="mt-3 text-[13px]"><b>{t('seenLabel')}:</b> {data.symptoms_seen.join(', ')}</p>}
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <TreatmentList icon={Leaf} title="Organic" items={data.organic_treatment} tone="text-brand" />
-        <TreatmentList icon={FlaskConical} title="Chemical" items={data.chemical_treatment} tone="text-sky" />
-        <TreatmentList icon={ShieldCheck} title="Prevention" items={data.prevention} tone="text-earth" />
-        <TreatmentList icon={AlertTriangle} title="Could also be" items={data.other_possibilities} tone="text-gold" />
+        <TreatmentList icon={Leaf} title={t('organicLabel')} items={data.organic_treatment} tone="text-brand" />
+        <TreatmentList icon={FlaskConical} title={t('chemicalLabel')} items={data.chemical_treatment} tone="text-sky" />
+        <TreatmentList icon={ShieldCheck} title={t('preventionLabel')} items={data.prevention} tone="text-earth" />
+        <TreatmentList icon={AlertTriangle} title={t('couldAlsoBe')} items={data.other_possibilities} tone="text-gold" />
       </div>
       <Note>{data.note}</Note>
     </div>
@@ -218,13 +229,14 @@ function DiseaseResult({ data }) {
 }
 
 function MandiResult({ data }) {
-  if (!data.prices) return <SearchResult data={data.web_results || []} title={`${data.commodity} prices (web)`} />
+  const { t } = useI18n()
+  if (!data.prices) return <SearchResult data={data.web_results || []} title={t('webPrices', { name: data.commodity })} />
   return (
     <div>
-      <Head title={`${data.commodity} · ₹ per quintal`} />
+      <Head title={`${data.commodity} · ${t('perQuintal')}`} />
       <div className="overflow-x-auto">
         <table className="w-full text-[13px]">
-          <thead className="text-left text-xs text-muted"><tr><th className="py-1 pr-3 font-medium">Market</th><th className="pr-3 font-medium">Modal</th><th className="pr-3 font-medium">Min–Max</th><th className="font-medium">Date</th></tr></thead>
+          <thead className="text-left text-xs text-muted"><tr><th className="py-1 pr-3 font-medium">{t('marketCol')}</th><th className="pr-3 font-medium">{t('modalCol')}</th><th className="pr-3 font-medium">{t('minMaxCol')}</th><th className="font-medium">{t('dateCol')}</th></tr></thead>
           <tbody>
             {data.prices.map((p, i) => (
               <tr key={i} className="border-t border-line">
@@ -237,13 +249,14 @@ function MandiResult({ data }) {
           </tbody>
         </table>
       </div>
-      <Note>Source: {data.source}</Note>
+      <Note>{t('sourceLabel')}: {data.source}</Note>
     </div>
   )
 }
 
 function GrazingResult({ data }) {
-  const stats = [['grazing_days', 'grazing days'], ['pasture_kg_dm_per_ha', 'kg DM / ha'], ['available_feed_kg_dm', 'kg feed available'], ['herd_daily_demand_kg_dm', 'kg/day herd demand']]
+  const { t } = useI18n()
+  const stats = [['grazing_days', t('grazingDaysLabel')], ['pasture_kg_dm_per_ha', t('kgDmHa')], ['available_feed_kg_dm', t('kgFeed')], ['herd_daily_demand_kg_dm', t('kgDayDemand')]]
   return (
     <div className="grid grid-cols-2 gap-2">
       {stats.map(([k, label], i) => (
@@ -273,17 +286,18 @@ function SearchResult({ data, title }) {
 }
 
 function WeatherResult({ data }) {
+  const { t, lang } = useI18n()
   const c = data.current || {}
   const d = data.daily || {}
   return (
     <div>
       <Head title={data.location} />
-      <p className="text-[13px]">{WEATHER(c.weather_code ?? 0)[0]} {c.temperature_2m}°C · humidity {c.relative_humidity_2m}% · wind {c.wind_speed_10m} km/h</p>
+      <p className="flex items-center gap-1.5 text-[13px]"><WeatherIcon code={c.weather_code ?? 0} size={14} /> {t(weatherKey(c.weather_code ?? 0))} · {c.temperature_2m}°C · {t('humidityWord')} {c.relative_humidity_2m}% · {t('windWord')} {c.wind_speed_10m} km/h</p>
       <div className="mt-2 grid grid-cols-7 gap-1 text-center text-[11px]">
-        {(d.time || []).map((t, i) => (
-          <div key={t} className="rounded-xl bg-surface-2 px-0.5 py-1.5">
-            <b>{new Date(t).toLocaleDateString(undefined, { weekday: 'short' })}</b>
-            <div>{WEATHER(d.weather_code?.[i] ?? 0)[0]}</div>
+        {(d.time || []).map((day, i) => (
+          <div key={day} className="rounded-xl bg-surface-2 px-0.5 py-1.5">
+            <b>{new Date(day).toLocaleDateString(lang, { weekday: 'short' })}</b>
+            <div className="flex justify-center py-0.5"><WeatherIcon code={d.weather_code?.[i] ?? 0} size={14} /></div>
             <div>{Math.round(d.temperature_2m_max[i])}°/{Math.round(d.temperature_2m_min[i])}°</div>
             <div className="text-sky">{d.precipitation_sum[i]}mm</div>
           </div>
@@ -294,10 +308,12 @@ function WeatherResult({ data }) {
 }
 
 function MemoryResult({ data }) {
+  const { t } = useI18n()
   if (Array.isArray(data)) {
     return <ul className="space-y-1 text-[13px]">{data.map((m) => <li key={m.id || m.thread_id}>• {m.text || `${m.title}: ${m.summary}`}</li>)}</ul>
   }
-  return <p className="text-[13px]">{data.saved === false ? 'Already known: ' : data.updated ? `Updated ${data.updated}: ` : 'Saved: '}<b>{data.fact || String(data.value ?? '')}</b></p>
+  const lead = data.saved === false ? `${t('alreadyKnown')}: ` : data.updated ? `${t('updatedLabel')} ${data.updated}: ` : `${t('savedLabel')}: `
+  return <p className="text-[13px]">{lead}<b>{data.fact || String(data.value ?? '')}</b></p>
 }
 
 const BY_KEY = {

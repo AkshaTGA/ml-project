@@ -1,3 +1,4 @@
+import { KeyRound } from 'lucide-react'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, useNavigate } from 'react-router'
@@ -14,7 +15,7 @@ function MissingKey() {
   return (
     <div className="grid min-h-full place-items-center p-6">
       <div className="max-w-md rounded-3xl border border-line bg-surface p-8 text-center shadow-xl">
-        <div className="text-4xl">🔑</div>
+        <KeyRound className="mx-auto text-brand" size={36} />
         <h1 className="mt-3 text-xl font-bold">Add your Clerk key</h1>
         <p className="mt-2 text-muted">
           Create <code className="rounded bg-surface-2 px-1">frontend/.env</code> with{' '}

@@ -10,6 +10,7 @@ import { useVerboseSteps } from '../lib/prefs'
 import { useToast } from '../lib/toast'
 import { AudioQueue } from '../lib/voice'
 import { VOICES, voiceId, voiceSettings } from '../lib/voices'
+import { knownText } from '../lib/labels'
 
 const TABS = [
   ['profile', UserCog, 'profile'], ['memory', Brain, 'memory'], ['style', Sparkles, 'style'], ['language', Languages, 'languageVoice'],
@@ -19,17 +20,6 @@ const PROFILE_FIELDS = [
   ['name', 'fieldName'], ['role', 'fieldRole'], ['location_name', 'fieldLocation'], ['land_area', 'fieldLandArea'], ['land_unit', 'fieldLandUnit'],
   ['crops', 'fieldCrops'], ['livestock', 'fieldLivestock'], ['irrigation', 'fieldIrrigation'], ['soil', 'fieldSoil'], ['goals', 'fieldGoals'],
 ]
-const VALUE_KEY = {
-  farmer: 'roleFarmer', herder: 'roleHerder', mixed: 'roleMixed', agribusiness: 'roleBusiness', student: 'roleStudent',
-  acre: 'unitAcre', bigha: 'unitBigha', hectare: 'unitHectare',
-  Rainfed: 'irrRainfed', Canal: 'irrCanal', 'Borewell / tubewell': 'irrBorewell', Drip: 'irrDrip', Sprinkler: 'irrSprinkler', 'Pond / tank': 'irrPond',
-  Alluvial: 'soilAlluvial', 'Black (cotton)': 'soilBlack', Red: 'soilRed', Laterite: 'soilLaterite', Sandy: 'soilSandy', Clay: 'soilClay', Loamy: 'soilLoamy', "Don't know": 'soilUnknown',
-  Wheat: 'cropWheat', Rice: 'cropRice', Maize: 'cropMaize', Cotton: 'cropCotton', Sugarcane: 'cropSugarcane', Soybean: 'cropSoybean',
-  Mustard: 'cropMustard', Chickpea: 'cropChickpea', Onion: 'cropOnion', Tomato: 'cropTomato', Potato: 'cropPotato', Banana: 'cropBanana',
-  Mango: 'cropMango', Vegetables: 'cropVegetables', Millets: 'cropMillets', Groundnut: 'cropGroundnut', 'Pasture / fodder': 'cropPasture', Fruits: 'cropFruits',
-  cows: 'animalCows', buffaloes: 'animalBuffaloes', goats: 'animalGoats', sheep: 'animalSheep', poultry: 'animalPoultry',
-}
-
 const card = 'rounded-3xl border border-line bg-surface p-5 shadow-sm'
 
 function display(field, value) {
@@ -49,11 +39,6 @@ function parse(field, text) {
     return Object.fromEntries(text.split(',').map((p) => p.trim().match(/^(\d+)\s+(.+)$/)).filter(Boolean).map((m) => [m[2].trim(), Number(m[1])]))
   }
   return text
-}
-
-/** One editable memory row: shows text, with inline edit (with voice typing) and delete. */
-function knownText(value, t) {
-  return VALUE_KEY[value] ? t(VALUE_KEY[value]) : value
 }
 
 function viewOf(field, value, t) {
@@ -92,7 +77,7 @@ function MemoryRow({ label, text, view, meta, onSave, onDelete }) {
             <button onClick={() => { setEditing(false); setValue(text || '') }} className="mt-1 grid size-9 place-items-center rounded-xl bg-surface-3"><X size={16} /></button>
           </div>
         ) : (
-          <div className={`text-sm ${(view ?? text) ? '' : 'italic text-muted'}`}>{view ?? text || t('notSet')}</div>
+          <div className={`text-sm ${(view ?? text) ? '' : 'italic text-muted'}`}>{(view ?? text) || t('notSet')}</div>
         )}
         {meta && !editing && <div className="mt-0.5 text-[11px] text-muted">{meta}</div>}
       </div>

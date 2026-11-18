@@ -97,7 +97,7 @@ Available blocks:
 - compare: 2-4 options side by side; mark the recommended one with "best": true.
   {"type":"compare","title":"Options","options":[{"name":"Drip","cost":"Rs 45,000/acre","best":true,"badge":"Saves water","metrics":{"Water saved":"40-60%"},"pros":["Less weeds"],"cons":["High upfront cost"]}]}
 - callout: one important warning or tip. tone = warning | danger | info | success | tip. {"type":"callout","tone":"warning","title":"Do not spray today","text":"Rain expected tomorrow will wash it off."}
-- tips: short tips with an emoji each. {"type":"tips","title":"Save water","items":[{"icon":"💧","title":"Mulch","text":"Keeps soil moist 2x longer"}]}
+- tips: short tips. Do not put emoji in the items. {"type":"tips","title":"Save water","items":[{"title":"Mulch","text":"Keeps soil moist 2x longer"}]}
 - calculator: when the answer depends on the user's own numbers (area, animals, dose). Inputs are sliders; outputs are \
 formulas over input keys using + - * / ^ ( ) and round/ceil/floor/min/max. Pre-fill defaults from the profile.
   {"type":"calculator","title":"Urea needed","inputs":[{"key":"area","label":"Field area","unit":"acre","default":2,"min":0.5,"max":20,"step":0.5},{"key":"dose","label":"Dose","unit":"kg/acre","default":50,"min":0,"max":150}],"outputs":[{"label":"Total urea","formula":"area*dose","unit":"kg"},{"label":"45 kg bags","formula":"ceil(area*dose/45)","unit":"bags","decimals":0}]}

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { motion } from 'motion/react'
-import { Check, Copy, CornerUpLeft, FileText, GitBranch, Pause, Pencil, RefreshCw, RotateCcw, Sparkles, Sprout, Volume2 } from 'lucide-react'
+import { Check, Copy, CornerUpLeft, FileText, GitBranch, Mic, Pause, Pencil, RefreshCw, RotateCcw, Sparkles, Sprout, Volume2, X } from 'lucide-react'
 import { AuthImage, Spinner } from '../common'
 import { useI18n } from '../../lib/i18n'
 import { useVerboseSteps } from '../../lib/prefs'
@@ -11,12 +11,13 @@ import ContextChip from './ContextChip'
 import { promoteUIFences, SourceLink, stripUIBlocks, UIBlock, UIContext } from './UIBlocks'
 
 export function Attachment({ file, onRemove, pending, large }) {
+  const { t } = useI18n()
   if (file.kind === 'image') {
     return (
       <div className={`relative overflow-hidden rounded-2xl border border-line bg-surface ${large ? 'h-36 w-48' : 'size-16'}`}>
         <AuthImage fileId={file.id} src={file.preview} className="size-full object-cover" />
         {pending && <div className="absolute inset-0 grid place-items-center bg-white/60"><Spinner /></div>}
-        {onRemove && <button onClick={onRemove} className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/60 text-xs text-white" aria-label="Remove">×</button>}
+        {onRemove && <button onClick={onRemove} className="absolute right-1 top-1 grid size-5 place-items-center rounded-full bg-black/60 text-white" aria-label={t('removeItem')}><X size={12} /></button>}
       </div>
     )
   }
@@ -24,7 +25,7 @@ export function Attachment({ file, onRemove, pending, large }) {
     <div className="relative flex max-w-56 items-center gap-2 rounded-2xl border border-line bg-surface py-2 pl-3 pr-7 text-sm">
       <FileText size={16} className="shrink-0 text-brand" /><span className="truncate">{file.name}</span>
       {pending && <Spinner size={14} />}
-      {onRemove && <button onClick={onRemove} className="absolute right-1.5 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-xs text-white" aria-label="Remove">×</button>}
+      {onRemove && <button onClick={onRemove} className="absolute right-1.5 top-1/2 grid size-5 -translate-y-1/2 place-items-center rounded-full bg-black/60 text-xs text-white" aria-label={t('removeItem')}>×</button>}
     </div>
   )
 }
@@ -44,12 +45,12 @@ function Actions({ message, onSpeak, speaking, isLast, busy, onRegenerate, onRew
   const { t } = useI18n()
   return (
     <div className="mt-2 flex items-center gap-1 text-muted opacity-70 transition group-hover:opacity-100">
-      <button title="Copy" className="rounded-lg p-1.5 hover:bg-surface-2 hover:text-ink" onClick={() => {
+      <button title={t('copy')} className="rounded-lg p-1.5 hover:bg-surface-2 hover:text-ink" onClick={() => {
         navigator.clipboard.writeText(stripUIBlocks(message.content))
         setCopied(true)
         setTimeout(() => setCopied(false), 1500)
       }}>{copied ? <Check size={15} /> : <Copy size={15} />}</button>
-      <button title="Read aloud" className={`rounded-lg p-1.5 hover:bg-surface-2 hover:text-ink ${speaking ? 'text-brand' : ''}`} onClick={onSpeak}>
+      <button title={t('listen')} className={`rounded-lg p-1.5 hover:bg-surface-2 hover:text-ink ${speaking ? 'text-brand' : ''}`} onClick={onSpeak}>
         {speaking === 'loading' ? <Spinner size={15} /> : speaking ? <Pause size={15} /> : <Volume2 size={15} />}
       </button>
       {onReply && <ActionButton title={t('reply')} onClick={onReply} disabled={busy}><CornerUpLeft size={15} /></ActionButton>}
@@ -57,7 +58,7 @@ function Actions({ message, onSpeak, speaking, isLast, busy, onRegenerate, onRew
       {onRewind && !isLast && <ActionButton title={t('rewindHere')} onClick={onRewind} disabled={busy}><RotateCcw size={15} /></ActionButton>}
       {onBranch && <ActionButton title={t('branchHere')} onClick={onBranch} disabled={busy}><GitBranch size={15} /></ActionButton>}
       {verbose && message.timing?.first_token_ms != null && (
-        <span className="ml-1 text-[11px]">first word in {(message.timing.first_token_ms / 1000).toFixed(1)}s</span>
+        <span className="ml-1 text-[11px]">{t('firstWord', { seconds: (message.timing.first_token_ms / 1000).toFixed(1) })}</span>
       )}
     </div>
   )
@@ -100,7 +101,7 @@ function UserMessage({ message, busy, onEditResend, onRewind, onReply, onOpenCon
         </div>
       ) : message.content && (
         <div className="whitespace-pre-wrap rounded-3xl rounded-br-md bg-brand px-4 py-3 text-base text-white shadow-sm [overflow-wrap:anywhere]">
-          {message.voice && <span className="mr-1.5 opacity-75">🎙️</span>}{message.content}
+          {message.voice && <Mic size={14} className="mr-1.5 inline opacity-75" />}{message.content}
         </div>
       )}
       {!editing && (onEditResend || onRewind || onReply) && (

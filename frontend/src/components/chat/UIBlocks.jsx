@@ -8,6 +8,7 @@ import {
   TrendingDown, TrendingUp, XCircle,
 } from 'lucide-react'
 import { evaluate } from './formula'
+import { useI18n } from '../../lib/i18n'
 
 const ChartBlock = lazy(() => import('./ChartBlock'))
 
@@ -187,8 +188,8 @@ function Compare({ spec }) {
                 ))}
               </dl>
             )}
-            {o.pros?.length > 0 && <ul className="mt-2 space-y-0.5 text-[13px]">{o.pros.map((p) => <li key={p} className="flex gap-1.5"><span className="text-brand">✓</span>{p}</li>)}</ul>}
-            {o.cons?.length > 0 && <ul className="mt-1 space-y-0.5 text-[13px]">{o.cons.map((c) => <li key={c} className="flex gap-1.5"><span className="text-danger">✗</span>{c}</li>)}</ul>}
+            {o.pros?.length > 0 && <ul className="mt-2 space-y-0.5 text-[13px]">{o.pros.map((p) => <li key={p} className="flex items-start gap-1.5"><Check size={14} className="mt-0.5 shrink-0 text-brand" />{p}</li>)}</ul>}
+            {o.cons?.length > 0 && <ul className="mt-1 space-y-0.5 text-[13px]">{o.cons.map((c) => <li key={c} className="flex items-start gap-1.5"><XCircle size={14} className="mt-0.5 shrink-0 text-danger" />{c}</li>)}</ul>}
           </motion.div>
         ))}
       </div>
@@ -217,7 +218,7 @@ function Tips({ spec }) {
       <div className="grid gap-2 sm:grid-cols-2">
         {(spec.items || []).map((tip, i) => (
           <div key={i} className="flex gap-3 rounded-2xl border border-line bg-surface p-3">
-            <span className="text-2xl leading-none">{tip.icon || '🌱'}</span>
+            <Lightbulb size={18} className="mt-0.5 shrink-0 text-gold" />
             <div className="min-w-0 text-sm"><div className="font-semibold">{tip.title}</div>{tip.text && <div className="text-muted">{tip.text}</div>}</div>
           </div>
         ))}
@@ -413,11 +414,16 @@ export function promoteUIFences(text) {
   })
 }
 
+function VisualFallback() {
+  const { t } = useI18n()
+  return <p className="my-2 text-xs text-muted">({t('visualFailed')})</p>
+}
+
 class BlockBoundary extends Component {
   state = { failed: false }
   static getDerivedStateFromError() { return { failed: true } }
   render() {
-    return this.state.failed ? <p className="my-2 text-xs text-muted">(This visual could not be displayed.)</p> : this.props.children
+    return this.state.failed ? <VisualFallback /> : this.props.children
   }
 }
 
@@ -433,11 +439,12 @@ function parse(source) {
  * Memoised on the source text, so new words elsewhere in the chat never re-render (or re-animate) a finished visual.
  */
 export const UIBlock = memo(function UIBlock({ source }) {
+  const { t } = useI18n()
   const { streaming, onAsk, interactive } = useContext(UIContext)
   const spec = useMemo(() => parse(source), [source])
   if (!spec) {
     return streaming
-      ? <div className="my-3 flex h-24 items-center justify-center rounded-3xl border border-dashed border-line text-sm text-muted"><span className="text-shimmer font-semibold">Preparing a visual…</span></div>
+      ? <div className="my-3 flex h-24 items-center justify-center rounded-3xl border border-dashed border-line text-sm text-muted"><span className="text-shimmer font-semibold">{t('preparingVisual')}</span></div>
       : null
   }
   const specs = Array.isArray(spec) ? spec : [spec]

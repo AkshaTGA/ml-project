@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
-import { Brain, CloudSun, GitBranch, IndianRupee, Leaf, PawPrint, RotateCcw, Sprout } from 'lucide-react'
+import { Brain, ChartColumn, GitBranch, Leaf, PawPrint, RotateCcw, Sprout } from 'lucide-react'
 import Composer from '../components/chat/Composer'
 import { flashFocus } from '../lib/focus'
 import { stripUIBlocks } from '../components/chat/UIBlocks'
@@ -70,10 +70,10 @@ function cutIndex(msgs, keepTurns) {
 const withoutSuggestions = (msgs) => msgs.map((m) => (m.suggestions ? { ...m, suggestions: [] } : m))
 
 const STARTERS = [
-  { icon: Leaf, text: 'My tomato leaves have brown spots with yellow rings. What is it?', tone: 'text-danger' },
-  { icon: CloudSun, text: 'Should I spray pesticide this week given the weather?', tone: 'text-sky' },
-  { icon: IndianRupee, text: 'What are onion prices in my nearest mandi today?', tone: 'text-gold' },
-  { icon: PawPrint, text: 'मेरी गाय को बुखार है और वह खाना नहीं खा रही, क्या करूँ?', tone: 'text-earth' },
+  { icon: Sprout, key: 'pasturePrompt', tone: 'text-brand' },
+  { icon: PawPrint, key: 'starterGoats', tone: 'text-earth' },
+  { icon: Leaf, key: 'starterLeaf', tone: 'text-danger' },
+  { icon: ChartColumn, key: 'starterRice', tone: 'text-sky' },
 ]
 
 export default function ChatPage() {
@@ -114,7 +114,7 @@ export default function ChatPage() {
     setLoading(true)
     api.threadMessages(routeId)
       .then((msgs) => setMessages(routeId, () => msgs.map((m) => (m.role === 'assistant' ? { ...m, status: 'done' } : m))))
-      .catch(() => { toast({ title: 'Conversation not found' }); navigate('/app/chat', { replace: true }) })
+      .catch(() => { toast({ title: t('chatNotFound') }); navigate('/app/chat', { replace: true }) })
       .finally(() => setLoading(false))
   }, [api, routeId, navigate, setMessages, toast])
 
@@ -196,7 +196,7 @@ export default function ChatPage() {
         }
       } catch { /* keep trying */ }
     }
-    setMessages(id, (prev) => [...prev.slice(0, -1), applyEvent(prev.at(-1), { type: 'error', message: 'Connection lost. Reload this chat to see the answer.' })])
+    setMessages(id, (prev) => [...prev.slice(0, -1), applyEvent(prev.at(-1), { type: 'error', message: t('connectionLost') })])
   }
 
   function stop() {
@@ -214,8 +214,8 @@ export default function ChatPage() {
     if (state.focus) focusRef.current = state.focus
     navigate(location.pathname, { replace: true, state: null })
     if (state.prompt || state.context) send(state.prompt || '', [], { context: state.context || [] })
-    if (state.action === 'scan') composerRef.current?.pickImage('Please check this leaf/plant for disease and tell me the treatment.')
-    if (state.action === 'pasture') composerRef.current?.pickImage('Estimate the biomass of this pasture and how long it can feed my animals.')
+    if (state.action === 'scan') composerRef.current?.pickImage(t('scanPrompt'))
+    if (state.action === 'pasture') composerRef.current?.pickImage(t('pasturePhotoPrompt'))
     if (state.action === 'voice') setVoiceOpen(true)
   }, [location.state]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -233,7 +233,7 @@ export default function ChatPage() {
     const queue = new AudioQueue({ onIdle: () => setSpeakingIdx((i) => (i === index ? null : i)) })
     speaker.current = queue
     queue.push(api.tts(content, { preferred_language: profile?.language, speaker: voiceId(profile, 'read') }).then((r) => r.audios).catch((err) => {
-      toast({ title: 'Could not read aloud', message: err.message })
+      toast({ title: t('couldNotRead'), message: err.message })
       return []
     }))
   }
@@ -256,7 +256,7 @@ export default function ChatPage() {
           label: t('undo'),
           onClick: () => api.restoreThread(id, res.checkpoint_id, res.summary)
             .then(() => setMessages(id, () => snapshot))
-            .catch((err) => toast({ title: 'Could not undo', message: err.message })),
+            .catch((err) => toast({ title: t('couldNotUndo'), message: err.message })),
         },
       })
     }
@@ -265,7 +265,7 @@ export default function ChatPage() {
 
   const guard = (fn) => async (...args) => {
     if (busy) return
-    try { await fn(...args) } catch (err) { toast({ title: 'Something went wrong', message: err.message }) }
+    try { await fn(...args) } catch (err) { toast({ title: t('somethingWrong'), message: err.message }) }
   }
 
   // Remove this question and everything after it; put the question back in the box to rephrase.
@@ -344,14 +344,14 @@ export default function ChatPage() {
               className="grid size-16 place-items-center rounded-3xl bg-gradient-to-br from-brand to-brand-strong text-white shadow-xl shadow-brand/30">
               <Sprout size={30} />
             </motion.div>
-            <h1 className="mt-5 font-display text-3xl font-bold text-brand-strong sm:text-4xl">{t('namaste')}{profile?.name ? `, ${profile.name}` : ''} 👋</h1>
+            <h1 className="mt-5 font-display text-3xl font-bold text-brand-strong sm:text-4xl">{t('namaste')}{profile?.name ? `, ${profile.name}` : ''}</h1>
             <p className="mt-2 max-w-lg text-lg text-muted">{t('helpToday')}</p>
             <div className="mt-8 grid w-full gap-3 text-left sm:grid-cols-2">
-              {STARTERS.map(({ icon: Icon, text, tone }, i) => (
-                <motion.button key={text} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.05 }}
-                  onClick={() => send(text)}
+              {STARTERS.map(({ icon: Icon, key, tone }, i) => (
+                <motion.button key={key} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 + i * 0.05 }}
+                  onClick={() => send(t(key))}
                   className="flex items-start gap-3 rounded-3xl bg-surface p-4 text-sm shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
-                  <Icon size={18} className={`mt-0.5 shrink-0 ${tone}`} /> {text}
+                  <Icon size={18} className={`mt-0.5 shrink-0 ${tone}`} /> {t(key)}
                 </motion.button>
               ))}
             </div>

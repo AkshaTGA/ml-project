@@ -97,8 +97,8 @@ const Composer = forwardRef(function Composer({ busy, onSend, onStop, onVoiceMod
         <div className="flex items-center gap-1 px-1">
           <input ref={fileRef} type="file" multiple accept={ACCEPT} hidden onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
           <input ref={cameraRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => { addFiles(e.target.files); e.target.value = '' }} />
-          <button title="Attach files" onClick={() => fileRef.current.click()} className="rounded-full p-2 text-muted hover:bg-surface-2 hover:text-ink"><Paperclip size={18} /></button>
-          <button title="Photo of leaf / pasture" onClick={() => cameraRef.current.click()} className="rounded-full p-2 text-muted hover:bg-surface-2 hover:text-ink"><Camera size={18} /></button>
+          <button title={t('attachFiles')} onClick={() => fileRef.current.click()} className="rounded-full p-2 text-muted hover:bg-surface-2 hover:text-ink"><Paperclip size={18} /></button>
+          <button title={t('photoLeaf')} onClick={() => cameraRef.current.click()} className="rounded-full p-2 text-muted hover:bg-surface-2 hover:text-ink"><Camera size={18} /></button>
           <VoiceTypingButton onText={insertVoice} size={18} className="h-9 min-w-9" />
           <span className="flex-1" />
           <button title={t('voiceMode')} onClick={onVoiceMode}

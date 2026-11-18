@@ -10,7 +10,7 @@ import { TOOL_INFO } from './AgentTimeline'
 
 const ORB = {
   idle: 'from-surface-3 to-surface-2',
-  listening: 'from-brand to-[#9ccc65]',
+  listening: 'from-brand to-[#c4b36a]',
   transcribing: 'from-brand to-sky',
   thinking: 'from-gold to-[#f59e0b]',
   speaking: 'from-sky to-brand',
@@ -137,7 +137,7 @@ export default function VoiceMode({ onClose, onSend }) {
 
   const label = {
     idle: t('tapToTalk'), listening: t('listening'), transcribing: '…', thinking: activity || t('thinking'),
-    speaking: t('speaking'), error: error || 'Something went wrong',
+    speaking: t('speaking'), error: error || t('somethingWrong'),
   }[state]
   const scale = state === 'listening' ? 1 + level * 0.45 : 1
 
@@ -146,11 +146,11 @@ export default function VoiceMode({ onClose, onSend }) {
       className="fixed inset-0 z-50 flex flex-col items-center bg-bg/95 px-6 py-8 backdrop-blur-2xl">
       <div className="flex w-full max-w-2xl items-center justify-between">
         <span className="text-sm font-semibold text-muted">{t('voiceMode')}</span>
-        <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-surface-2 hover:bg-surface-3" aria-label="Close"><X size={20} /></button>
+        <button onClick={onClose} className="grid size-10 place-items-center rounded-full bg-surface-2 hover:bg-surface-3" aria-label={t('closeVoice')}><X size={20} /></button>
       </div>
 
       <div className="flex flex-1 flex-col items-center justify-center gap-10">
-        <button onClick={tapOrb} className="relative grid size-56 place-items-center sm:size-64" aria-label="Talk">
+        <button onClick={tapOrb} className="relative grid size-56 place-items-center sm:size-64" aria-label={t('talkOrb')}>
           {(state === 'speaking' || state === 'thinking') && [0, 1, 2].map((i) => (
             <motion.span key={i} className={`absolute inset-6 rounded-full bg-gradient-to-br ${ORB[state]} opacity-30`}
               animate={{ scale: [1, 1.5], opacity: [0.35, 0] }} transition={{ duration: 2, repeat: Infinity, delay: i * 0.6 }} />
@@ -175,8 +175,8 @@ export default function VoiceMode({ onClose, onSend }) {
 
       <div className="flex items-center gap-4">
         <button onClick={toggleMute} className={`grid size-14 place-items-center rounded-full ${muted ? 'bg-danger text-white' : 'bg-surface-2 hover:bg-surface-3'}`}
-          aria-label={muted ? 'Unmute' : 'Mute'}>{muted ? <MicOff size={22} /> : <Mic size={22} />}</button>
-        <button onClick={onClose} className="grid size-14 place-items-center rounded-full bg-danger text-white" aria-label="End"><X size={24} /></button>
+          aria-label={muted ? t('unmute') : t('mute')}>{muted ? <MicOff size={22} /> : <Mic size={22} />}</button>
+        <button onClick={onClose} className="grid size-14 place-items-center rounded-full bg-danger text-white" aria-label={t('endVoice')}><X size={24} /></button>
       </div>
     </motion.div>
   )

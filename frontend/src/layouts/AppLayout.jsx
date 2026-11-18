@@ -3,7 +3,7 @@ import { Link, NavLink, Outlet, useLocation, useMatch, useNavigate } from 'react
 import { UserButton } from '@clerk/react'
 import { AnimatePresence, motion } from 'motion/react'
 import {
-  ChevronDown, GitBranch, Home, LayoutGrid, MessageCircle, PanelLeftClose, PanelLeftOpen, Pencil, Plus, Search, Settings as SettingsIcon, Sprout, Trash2,
+  ChevronDown, GitBranch, Home, LayoutGrid, MessageCircle, PanelLeftClose, PanelLeftOpen, PawPrint, Pencil, Plus, Search, Settings as SettingsIcon, Trash2,
 } from 'lucide-react'
 import { Logo } from '../components/common'
 import { useApi } from '../lib/api'
@@ -24,6 +24,7 @@ function groupThreads(threads) {
 }
 
 function ThreadItem({ thread, active, onDelete, onRename }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [title, setTitle] = useState(thread.title)
   if (editing) {
@@ -37,11 +38,11 @@ function ThreadItem({ thread, active, onDelete, onRename }) {
   return (
     <Link to={`/app/chat/${thread.id}`}
       className={`group flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition ${active ? 'bg-surface font-semibold shadow-sm' : 'text-ink/80 hover:bg-surface/70'}`}>
-      {thread.parent_id && <GitBranch size={13} className="shrink-0 text-muted" aria-label="Branched chat" />}
+      {thread.parent_id && <GitBranch size={13} className="shrink-0 text-muted" aria-label={t('branchedChat')} />}
       <span className="min-w-0 flex-1 truncate">{thread.title.replace(/^↳\s*/, '')}</span>
       <span className="hidden gap-0.5 group-hover:flex">
-        <button onClick={(e) => { e.preventDefault(); setEditing(true) }} className="rounded p-1 text-muted hover:text-ink" title="Rename"><Pencil size={13} /></button>
-        <button onClick={(e) => { e.preventDefault(); onDelete() }} className="rounded p-1 text-muted hover:text-danger" title="Delete"><Trash2 size={13} /></button>
+        <button onClick={(e) => { e.preventDefault(); setEditing(true) }} className="rounded p-1 text-muted hover:text-ink" title={t('renameChat')}><Pencil size={13} /></button>
+        <button onClick={(e) => { e.preventDefault(); onDelete() }} className="rounded p-1 text-muted hover:text-danger" title={t('delete')}><Trash2 size={13} /></button>
       </span>
     </Link>
   )
@@ -80,9 +81,9 @@ export default function AppLayout() {
   const tab = new URLSearchParams(location.search).get('tab')
   const nav = [
     { id: 'home', to: '/app', icon: Home, label: t('home') },
-    { id: 'chat', to: '/app/chat', icon: MessageCircle, label: t('askAssistant') },
-    { id: 'farm', to: '/app/settings?tab=profile', icon: Sprout, label: t('myFarm') },
     { id: 'tools', to: '/app/models', icon: LayoutGrid, label: t('farmTools') },
+    { id: 'chat', to: '/app/chat', icon: MessageCircle, label: t('askAssistant') },
+    { id: 'farm', to: '/app/settings?tab=profile', icon: PawPrint, label: t('myFarm') },
     { id: 'settings', to: '/app/settings?tab=style', icon: SettingsIcon, label: t('settings') },
   ]
   const itemActive = (item) => {
@@ -99,7 +100,7 @@ export default function AppLayout() {
       className="flex h-full w-[260px] flex-col gap-4 border-r border-line/70 bg-bg/80 p-4">
       <div className="flex items-center justify-between px-1.5 pt-1">
         <Link to="/app"><Logo size={30} /></Link>
-        <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-muted hover:bg-surface hover:text-ink" title="Close sidebar">
+        <button onClick={() => setOpen(false)} className="rounded-lg p-1.5 text-muted hover:bg-surface hover:text-ink" title={t('closeSidebar')}>
           <PanelLeftClose size={18} />
         </button>
       </div>
@@ -177,7 +178,7 @@ export default function AppLayout() {
       </AnimatePresence>
       <main className="relative flex min-w-0 flex-1 flex-col">
         {!open && (
-          <button onClick={() => setOpen(true)} title="Open sidebar"
+          <button onClick={() => setOpen(true)} title={t('openSidebar')}
             className="absolute left-3 top-3 z-20 rounded-xl border border-line bg-surface/80 p-2 text-muted backdrop-blur hover:text-ink">
             <PanelLeftOpen size={18} />
           </button>

@@ -3,13 +3,13 @@ import { Link } from 'react-router'
 import { useAuth } from '@clerk/react'
 import { AnimatePresence, motion } from 'motion/react'
 import {
-  ArrowRight, AudioLines, Brain, Check, CloudSun, IndianRupee, Leaf, MessageCircleQuestion, Mic, Sparkles,
-  Sprout, Stethoscope, PawPrint,
+  ArrowRight, AudioLines, Brain, ChartColumn, Check, CloudSun, Layers, MessageCircleQuestion, Mic, Sparkles,
+  Sprout,
 } from 'lucide-react'
 import { Logo } from '../components/common'
-import { LANGUAGES } from '../lib/i18n'
+import { LANGUAGES, useI18n } from '../lib/i18n'
 
-const WORDS = ['farmer', 'किसान', 'शेतकरी', 'ਕਿਸਾਨ', 'விவசாயி', 'రైతు', 'herder', 'ಕೃಷಿಕ', 'কৃষক']
+const WORDS = ['herder', 'पशुपालक', 'farmer', 'किसान', 'शेतकरी', 'ਪਸ਼ੂ ਪਾਲਕ', 'விவசாயி', 'గొర్రెల కాపరి']
 
 const fadeUp = {
   initial: { opacity: 0, y: 24 },
@@ -29,7 +29,7 @@ function RotatingWord() {
       <AnimatePresence mode="popLayout">
         <motion.span key={WORDS[i]} initial={{ y: '100%', opacity: 0 }} animate={{ y: 0, opacity: 1 }}
           exit={{ y: '-100%', opacity: 0 }} transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="bg-gradient-to-r from-brand via-[#5aa83c] to-gold bg-clip-text text-transparent">
+          className="bg-gradient-to-r from-brand via-earth to-gold bg-clip-text text-transparent">
           {WORDS[i]}
         </motion.span>
       </AnimatePresence>
@@ -37,14 +37,14 @@ function RotatingWord() {
   )
 }
 
-const DEMO_STEPS = [
-  { icon: Brain, label: 'Recalled 3 memories', detail: 'Wheat · 5 acres · Nashik' },
-  { icon: Leaf, label: 'Leaf doctor', detail: 'Yellow rust · 87% confident' },
-  { icon: CloudSun, label: 'Checked weather', detail: 'Rain likely Thursday' },
-]
-const DEMO_ANSWER = 'यह **पीला रतुआ (Yellow rust)** है। गुरुवार को बारिश है, इसलिए **कल सुबह** प्रोपिकोनाज़ोल 25 EC (200 ml/एकड़) का छिड़काव करें…'
-
 function AgentDemo({ compact = false }) {
+  const { t } = useI18n()
+  const steps = [
+    { icon: Brain, label: t('demoRecall'), detail: t('demoHerd') },
+    { icon: Sprout, label: t('modelBiomass'), detail: t('demoTotal') },
+    { icon: CloudSun, label: t('demoWeather'), detail: t('demoDry') },
+  ]
+  const answerText = t('demoAnswer')
   const [stage, setStage] = useState(0) // 0 user, 1..3 steps, 4 answer
   const [typed, setTyped] = useState(0)
 
@@ -53,30 +53,30 @@ function AgentDemo({ compact = false }) {
       const id = setTimeout(() => setStage((s) => s + 1), stage === 0 ? 900 : 1100)
       return () => clearTimeout(id)
     }
-    if (typed < DEMO_ANSWER.length) {
+    if (typed < answerText.length) {
       const id = setTimeout(() => setTyped((n) => n + 3), 28)
       return () => clearTimeout(id)
     }
     const id = setTimeout(() => { setStage(0); setTyped(0) }, 3500)
     return () => clearTimeout(id)
-  }, [stage, typed])
+  }, [stage, typed, answerText])
 
-  const answer = DEMO_ANSWER.slice(0, typed).split('**').map((part, i) => (i % 2 ? <b key={i}>{part}</b> : part))
+  const answer = answerText.slice(0, typed).split('**').map((part, i) => (i % 2 ? <b key={i}>{part}</b> : part))
 
   return (
     <div className={`relative rounded-[28px] border border-line bg-surface/90 p-5 shadow-2xl shadow-brand/10 backdrop-blur ${compact ? '' : 'sm:p-6'}`}>
       <div className="mb-4 flex items-center gap-2 text-xs text-muted">
         <span className="size-2.5 rounded-full bg-danger/70" /><span className="size-2.5 rounded-full bg-gold/70" /><span className="size-2.5 rounded-full bg-brand/70" />
-        <span className="ml-2">AgriAssist · live agent</span>
+        <span className="ml-2">{t('demoLive')}</span>
       </div>
       <div className="ml-auto flex w-fit max-w-[85%] items-end gap-2">
-        <div className="rounded-2xl rounded-br-sm bg-brand-soft px-4 py-2.5 text-sm">मेरी गेहूं की पत्तियों पर पीले धब्बे हैं 🌾</div>
+        <div className="rounded-2xl rounded-br-sm bg-brand-soft px-4 py-2.5 text-sm">{t('demoQuestion')}</div>
       </div>
-      <div className="ml-auto mt-2 h-20 w-28 rounded-xl bg-[radial-gradient(circle_at_30%_40%,#e8c547_0_8%,transparent_9%),radial-gradient(circle_at_60%_60%,#e8c547_0_6%,transparent_7%),radial-gradient(circle_at_75%_30%,#d9b13b_0_5%,transparent_6%),linear-gradient(135deg,#4f8f2f,#6aa83c)]" />
+      <div className="ml-auto mt-2 h-20 w-28 rounded-xl bg-[radial-gradient(circle_at_30%_40%,#e2c07a_0_8%,transparent_9%),radial-gradient(circle_at_60%_60%,#c4a15a_0_6%,transparent_7%),radial-gradient(circle_at_75%_30%,#8d5a32_0_5%,transparent_6%),linear-gradient(135deg,#3d5c32,#7a8a3e)]" />
       <div className="mt-4 flex gap-3">
         <div className="grid size-8 shrink-0 place-items-center rounded-full bg-brand text-white"><Sprout size={16} /></div>
         <div className="min-w-0 flex-1 space-y-2">
-          {DEMO_STEPS.map((step, i) => {
+          {steps.map((step, i) => {
             const state = stage > i + 1 ? 'done' : stage === i + 1 ? 'active' : 'hidden'
             if (state === 'hidden') return null
             const Icon = step.icon
@@ -103,12 +103,12 @@ function AgentDemo({ compact = false }) {
 }
 
 const FEATURES = [
-  { icon: Sprout, title: 'Pasture biomass AI', text: 'A shared ResNet reads the pasture photo and the XGBoost model you pick estimates clover, dead, green, total, or green dry matter. Grad-CAM shows what the network used.', tone: 'brand', big: true },
-  { icon: Mic, title: 'Talk in your language', text: 'Speak Hindi, Marathi, Tamil or 19 more languages. Hands-free voice mode answers out loud.', tone: 'gold' },
-  { icon: Stethoscope, title: 'Leaf doctor', text: 'Snap a leaf. Get the disease, urgency, and organic or chemical treatment.', tone: 'danger' },
-  { icon: IndianRupee, title: 'Mandi prices & weather', text: 'Live market rates and 7-day forecasts, turned into sow, spray and sell decisions.', tone: 'sky' },
-  { icon: Brain, title: 'Memory that grows', text: 'It remembers your fields, animals and past problems across every chat. You see and control everything it stores.', tone: 'brand' },
-  { icon: PawPrint, title: 'Livestock care', text: 'Triage sick animals, plan feed and vaccination for cows, buffaloes, goats and sheep.', tone: 'earth' },
+  { icon: Sprout, title: 'modelBiomass', text: 'featBiomassText', tone: 'brand', big: true },
+  { icon: ChartColumn, title: 'modelYield', text: 'featYieldText', tone: 'sky' },
+  { icon: Layers, title: 'modelSoil', text: 'featSoilText', tone: 'earth' },
+  { icon: MessageCircleQuestion, title: 'featAgentTitle', text: 'featAgentText', tone: 'gold' },
+  { icon: Mic, title: 'featTalkTitle', text: 'featTalkText', tone: 'gold', wave: true },
+  { icon: Brain, title: 'featMemoryTitle', text: 'featMemoryText', tone: 'brand' },
 ]
 const TONES = {
   brand: 'bg-brand-soft text-brand', gold: 'bg-gold-soft text-gold', danger: 'bg-danger-soft text-danger',
@@ -116,13 +116,14 @@ const TONES = {
 }
 
 function BiomassVisual() {
-  const bars = [['Green', 72, 'bg-brand'], ['Clover', 24, 'bg-[#8bc34a]'], ['Dead', 31, 'bg-earth'], ['Total', 100, 'bg-brand-strong']]
+  const { t } = useI18n()
+  const bars = [[t('barGreen'), 72, 'bg-brand'], [t('barClover'), 24, 'bg-brand-soft'], [t('barDead'), 31, 'bg-earth'], [t('barTotal'), 100, 'bg-brand-strong']]
   return (
     <div className="mt-6 space-y-2.5">
       {bars.map(([label, value, color], i) => (
         <div key={label} className="flex items-center gap-3 text-xs">
-          <span className="w-12 text-muted">{label}</span>
-          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-surface-2">
+          <span className="w-12 text-white/70">{label}</span>
+          <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-white/15">
             <motion.div className={`h-full rounded-full ${color}`} initial={{ width: 0 }} whileInView={{ width: `${value}%` }}
               viewport={{ once: true }} transition={{ duration: 1, delay: 0.2 + i * 0.12, ease: 'easeOut' }} />
           </div>
@@ -145,6 +146,7 @@ function Waveform() {
 
 export default function Landing() {
   const { isSignedIn } = useAuth()
+  const { t } = useI18n()
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10)
@@ -153,8 +155,8 @@ export default function Landing() {
   }, [])
 
   const cta = isSignedIn
-    ? { to: '/app', label: 'Open dashboard' }
-    : { to: '/sign-up', label: 'Get started free' }
+    ? { to: '/app', label: t('openDashboard') }
+    : { to: '/sign-up', label: t('getStarted') }
 
   return (
     <div className="min-h-full overflow-x-hidden">
@@ -163,12 +165,12 @@ export default function Landing() {
         <nav className="mx-auto flex h-16 max-w-6xl items-center gap-6 px-4 sm:px-6">
           <Link to="/"><Logo /></Link>
           <div className="ml-6 hidden gap-6 text-sm text-muted md:flex">
-            <a href="#features" className="hover:text-ink">Features</a>
-            <a href="#how" className="hover:text-ink">How it works</a>
-            <a href="#languages" className="hover:text-ink">Languages</a>
+            <a href="#features" className="hover:text-ink">{t('navFeatures')}</a>
+            <a href="#how" className="hover:text-ink">{t('navHow')}</a>
+            <a href="#languages" className="hover:text-ink">{t('navLanguages')}</a>
           </div>
           <div className="ml-auto flex items-center gap-2">
-            {!isSignedIn && <Link to="/sign-in" className="hidden rounded-full px-4 py-2 text-sm font-semibold hover:bg-surface-2 sm:block">Sign in</Link>}
+            {!isSignedIn && <Link to="/sign-in" className="hidden rounded-full px-4 py-2 text-sm font-semibold hover:bg-surface-2 sm:block">{t('signIn')}</Link>}
             <Link to={cta.to} className="rounded-full bg-brand px-4 py-2 text-sm font-semibold text-white transition hover:scale-[1.03] hover:bg-brand-strong">{cta.label}</Link>
           </div>
         </nav>
@@ -184,26 +186,25 @@ export default function Landing() {
         <div className="mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-[1.1fr_1fr]">
           <div>
             <motion.div {...fadeUp} className="inline-flex items-center gap-2 rounded-full border border-line bg-surface/70 px-3 py-1.5 text-xs font-semibold text-muted backdrop-blur">
-              <Sparkles size={14} className="text-gold" /> Agentic AI for Indian agriculture
+              <Sparkles size={14} className="text-gold" /> {t('heroBadge')}
             </motion.div>
             <motion.h1 {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.05 }}
               className="mt-5 font-display text-5xl leading-[1.05] font-bold tracking-tight sm:text-6xl lg:text-7xl">
-              The AI expert<br />every <RotatingWord /><br />deserves.
+              {t('heroLine1')}<br />{t('heroLine2')} <RotatingWord />.
             </motion.h1>
             <motion.p {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.1 }} className="mt-6 max-w-xl text-lg text-muted">
-              Ask by voice in your own language. AgriAssist looks at your photos, checks weather and mandi prices,
-              runs our ML models, and remembers your farm, so every answer fits <em>your</em> fields and animals.
+              {t('heroBody')}
             </motion.p>
             <motion.div {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.15 }} className="mt-8 flex flex-wrap gap-3">
               <Link to={cta.to} className="group inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3.5 font-semibold text-white shadow-lg shadow-brand/30 transition hover:bg-brand-strong">
                 {cta.label} <ArrowRight size={18} className="transition group-hover:translate-x-1" />
               </Link>
               <a href="#how" className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-6 py-3.5 font-semibold transition hover:border-brand">
-                <AudioLines size={18} className="text-brand" /> See an example
+                <AudioLines size={18} className="text-brand" /> {t('seeExample')}
               </a>
             </motion.div>
             <motion.dl {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }} className="mt-12 grid max-w-lg grid-cols-3 gap-6">
-              {[['22', 'languages by voice'], ['12', 'agent tools'], ['24/7', 'farm memory']].map(([n, l]) => (
+              {[['3', t('statModels')], ['1', t('statAgent')], ['22', t('statLangs')]].map(([n, l]) => (
                 <div key={l}><dt className="font-display text-3xl font-bold">{n}</dt><dd className="text-sm text-muted">{l}</dd></div>
               ))}
             </motion.dl>
@@ -214,7 +215,7 @@ export default function Landing() {
             <AgentDemo />
             <motion.div className="absolute -bottom-6 -left-6 hidden items-center gap-2 rounded-2xl border border-line bg-surface px-4 py-3 text-sm shadow-xl sm:flex"
               animate={{ y: [0, -8, 0] }} transition={{ duration: 5, repeat: Infinity }}>
-              <Brain size={18} className="text-brand" /> Remembered: <b>5 acres wheat, Nashik</b>
+              <Brain size={18} className="text-brand" /> {t('demoRemembered')}
             </motion.div>
           </motion.div>
         </div>
@@ -237,8 +238,8 @@ export default function Landing() {
       <section id="features" className="px-4 py-24 sm:px-6">
         <div className="mx-auto max-w-6xl">
           <motion.div {...fadeUp} className="max-w-2xl">
-            <p className="text-sm font-bold tracking-widest text-brand uppercase">Everything in one assistant</p>
-            <h2 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">From soil to sale, it has your back.</h2>
+            <p className="text-sm font-bold tracking-widest text-brand uppercase">{t('featKicker')}</p>
+            <h2 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">{t('featTitle')}</h2>
           </motion.div>
           <div className="mt-12 grid gap-4 md:grid-cols-3">
             {FEATURES.map((f, i) => {
@@ -246,12 +247,15 @@ export default function Landing() {
               return (
                 <motion.div key={f.title} {...fadeUp} transition={{ ...fadeUp.transition, delay: i * 0.06 }}
                   whileHover={{ y: -4 }}
-                  className={`group rounded-3xl border border-line bg-surface p-6 transition-shadow hover:shadow-xl hover:shadow-brand/5 ${f.big ? 'md:row-span-2' : ''}`}>
-                  <div className={`grid size-11 place-items-center rounded-2xl ${TONES[f.tone]}`}><Icon size={22} /></div>
-                  <h3 className="mt-4 text-lg font-bold">{f.title}</h3>
-                  <p className="mt-1.5 text-muted">{f.text}</p>
+                  className={`group rounded-3xl border p-6 transition-shadow hover:shadow-xl ${f.big ? 'pasture-panel border-transparent text-white md:row-span-2' : 'border-line bg-surface hover:shadow-brand/5'}`}>
+                  <div className="flex items-center justify-between">
+                    <div className={`grid size-11 place-items-center rounded-2xl ${f.big ? 'bg-white/15 text-white' : TONES[f.tone]}`}><Icon size={22} /></div>
+                    {f.big && <span className="rounded-full bg-[var(--c-straw)] px-2.5 py-1 text-[10px] font-bold tracking-wide text-[var(--c-pasture-deep)] uppercase">{t('flagship')}</span>}
+                  </div>
+                  <h3 className={`mt-4 font-bold ${f.big ? 'text-2xl' : 'text-lg'}`}>{t(f.title)}</h3>
+                  <p className={`mt-1.5 ${f.big ? 'text-white/80' : 'text-muted'}`}>{t(f.text)}</p>
                   {f.big && <BiomassVisual />}
-                  {f.title.startsWith('Talk') && <Waveform />}
+                  {f.wave && <Waveform />}
                 </motion.div>
               )
             })}
@@ -264,14 +268,14 @@ export default function Landing() {
         <div className="absolute inset-0 -z-10 bg-gradient-to-b from-transparent via-brand-soft/40 to-transparent" />
         <div className="mx-auto grid max-w-6xl items-center gap-14 lg:grid-cols-2">
           <motion.div {...fadeUp}>
-            <p className="text-sm font-bold tracking-widest text-brand uppercase">Transparent by design</p>
-            <h2 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">Watch it think. Trust what it says.</h2>
-            <p className="mt-4 text-lg text-muted">Every answer shows its work: which memories it used, which models it ran, what the weather said. No black box.</p>
+            <p className="text-sm font-bold tracking-widest text-brand uppercase">{t('howKicker')}</p>
+            <h2 className="mt-3 font-display text-4xl font-bold tracking-tight sm:text-5xl">{t('howTitle')}</h2>
+            <p className="mt-4 text-lg text-muted">{t('howBody')}</p>
             <ol className="mt-8 space-y-5">
               {[
-                ['Tell it about your farm', 'A 1-minute setup: language, location, crops and animals.'],
-                ['Ask anything, any way', 'Type, talk, or snap a photo of a leaf, pasture or soil report.'],
-                ['Get advice that remembers', 'It learns from every chat. You can see, edit or erase any memory.'],
+                [t('how1t'), t('how1b')],
+                [t('how2t'), t('how2b')],
+                [t('how3t'), t('how3b')],
               ].map(([title, text], i) => (
                 <li key={title} className="flex gap-4">
                   <span className="grid size-9 shrink-0 place-items-center rounded-full bg-ink font-bold text-bg">{i + 1}</span>
@@ -286,13 +290,13 @@ export default function Landing() {
 
       {/* CTA */}
       <section className="px-4 pb-24 sm:px-6">
-        <motion.div {...fadeUp} className="relative mx-auto max-w-6xl overflow-hidden rounded-[36px] bg-gradient-to-br from-[#1f5f24] via-[#2f7d32] to-[#5e8f2c] px-6 py-16 text-center text-white sm:px-16">
+        <motion.div {...fadeUp} className="pasture-panel relative mx-auto max-w-6xl overflow-hidden rounded-[36px] px-6 py-16 text-center text-white sm:px-16">
           <div className="absolute -right-20 -top-20 size-80 rounded-full bg-white/10 blur-2xl" />
-          <div className="absolute -bottom-24 -left-10 size-80 rounded-full bg-[#f2c14e]/25 blur-3xl" />
+          <div className="absolute -bottom-24 -left-10 size-80 rounded-full bg-[var(--c-straw)]/25 blur-3xl" />
           <MessageCircleQuestion className="relative mx-auto" size={40} />
-          <h2 className="relative mt-4 font-display text-4xl font-bold sm:text-5xl">Your fields are talking. Start listening.</h2>
-          <p className="relative mx-auto mt-3 max-w-xl text-white/85">Free to use. Works on any phone browser. Speak in the language you think in.</p>
-          <Link to={cta.to} className="relative mt-8 inline-flex items-center gap-2 rounded-full bg-white px-7 py-3.5 font-bold text-[#1f5f24] transition hover:scale-[1.03]">
+          <h2 className="relative mt-4 font-display text-4xl font-bold sm:text-5xl">{t('ctaTitle')}</h2>
+          <p className="relative mx-auto mt-3 max-w-xl text-white/85">{t('ctaBody')}</p>
+          <Link to={cta.to} className="relative mt-8 inline-flex items-center gap-2 rounded-full bg-[var(--c-straw)] px-7 py-3.5 font-bold text-[var(--c-pasture-deep)] transition hover:scale-[1.03]">
             {cta.label} <ArrowRight size={18} />
           </Link>
         </motion.div>
@@ -301,7 +305,7 @@ export default function Landing() {
       <footer className="border-t border-line px-4 py-10 sm:px-6">
         <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 text-sm text-muted sm:flex-row">
           <Logo size={26} />
-          <p>An ML course project · Pasture biomass estimation + agentic AI for agriculture</p>
+          <p>{t('footerLine')}</p>
         </div>
       </footer>
     </div>

@@ -163,10 +163,10 @@ function resultChip(model, result, image) {
   }
 }
 
-function formatWhen(iso) {
+function formatWhen(iso, lang) {
   const date = new Date(iso)
   if (Number.isNaN(date.getTime())) return ''
-  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+  return date.toLocaleString(lang, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
 }
 
 function ModelPanel({ model, onRan }) {
@@ -285,7 +285,8 @@ export default function ModelsPage() {
   useEffect(() => {
     api.models().then((m) => {
       setModels(m)
-      setSelected((current) => current || m[0]?.id)
+      const requested = params.get('model')
+      setSelected((current) => (requested && m.some((item) => item.id === requested) ? requested : current || m[0]?.id))
     }).catch((e) => setError(e.message))
     loadRuns()
   }, [api]) // eslint-disable-line react-hooks/exhaustive-deps
@@ -296,26 +297,38 @@ export default function ModelsPage() {
     return () => clearTimeout(timer)
   }, [focusRun, runs])
 
+  const requested = params.get('model')
+  useEffect(() => {
+    if (requested && models.some((item) => item.id === requested)) setSelected(requested)
+  }, [requested, models])
+
   const model = models.find((m) => m.id === selected)
   return (
     <div className="scroll-thin h-full overflow-y-auto">
       <div className="mx-auto max-w-6xl px-4 pb-16 pt-16 sm:px-8 sm:pt-10">
-        <h1 className="font-display text-3xl font-bold tracking-tight text-brand-strong sm:text-4xl">{t('farmTools')}</h1>
-        <p className="mt-1 text-muted">{t('toolsHelp')}</p>
+        <p className="text-[11px] font-bold tracking-[0.16em] text-brand uppercase">{t('farmTools')} · {t('askAssistant')}</p>
+        <h1 className="mt-2 font-display text-3xl font-bold tracking-tight text-brand-strong sm:text-4xl">{t('modelsLead')}</h1>
+        <p className="mt-2 max-w-2xl text-muted">{t('toolsHelp')}</p>
         {error && <div className="mt-4 rounded-2xl bg-danger-soft p-3 text-sm text-danger">{error}</div>}
-        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {models.map((m) => {
+        <div className="mt-6 grid gap-3 lg:grid-cols-3">
+          {[...models].sort((a, b) => Number(b.id === 'biomass') - Number(a.id === 'biomass')).map((m) => {
             const Icon = ICONS[m.id] || FlaskConical
             const active = m.id === selected
+            const flagship = m.id === 'biomass'
+            const nameKey = { biomass: 'modelBiomass', yield: 'modelYield', soil: 'modelSoil' }[m.id]
+            const descKey = { biomass: 'modelBiomassDesc', yield: 'modelYieldDesc', soil: 'modelSoilDesc' }[m.id]
             return (
               <button key={m.id} onClick={() => setSelected(m.id)}
-                className={`rounded-3xl border-2 bg-surface p-4 text-left transition ${active ? 'border-brand shadow-lg shadow-brand/10' : 'border-line hover:border-brand/40'}`}>
+                className={`rounded-3xl border-2 p-4 text-left transition ${flagship ? 'pasture-panel text-white lg:col-span-3' : 'bg-surface'} ${active ? 'border-brand shadow-lg shadow-brand/10' : 'border-line hover:border-brand/40'}`}>
                 <div className="flex items-center justify-between">
-                  <span className={`grid size-10 place-items-center rounded-2xl ${active ? 'bg-brand text-white' : 'bg-brand-soft text-brand'}`}><Icon size={20} /></span>
-                  <ModeBadge mode={m.status === 'connected' ? 'live' : 'mock'} />
+                  <span className={`grid size-10 place-items-center rounded-2xl ${flagship ? 'bg-white/15 text-white' : active ? 'bg-brand text-white' : 'bg-brand-soft text-brand'}`}><Icon size={20} /></span>
+                  <span className="flex items-center gap-2">
+                    {flagship && <span className="rounded-full bg-[var(--c-straw)] px-2 py-0.5 text-[10px] font-bold tracking-wide text-[var(--c-pasture-deep)] uppercase">{t('flagship')}</span>}
+                    <ModeBadge mode={m.status === 'connected' ? 'live' : 'mock'} />
+                  </span>
                 </div>
-                <div className="mt-3 font-bold">{m.name}</div>
-                <p className="mt-1 line-clamp-3 text-sm text-muted">{m.description}</p>
+                <div className={`mt-3 font-bold ${flagship ? 'text-xl' : ''}`}>{nameKey ? t(nameKey) : m.name}</div>
+                <p className={`mt-1 text-sm ${flagship ? 'max-w-2xl text-white/80' : 'line-clamp-3 text-muted'}`}>{descKey ? t(descKey) : m.description}</p>
               </button>
             )
           })}
@@ -329,7 +342,7 @@ export default function ModelsPage() {
 
 function ToolHistory({ model, runs, openRun, setOpenRun, onChanged }) {
   const api = useApi()
-  const { t } = useI18n()
+  const { t, lang } = useI18n()
   const navigate = useNavigate()
   const Icon = ICONS[model.id] || FlaskConical
   const [error, setError] = useState('')
@@ -385,7 +398,7 @@ function ToolHistory({ model, runs, openRun, setOpenRun, onChanged }) {
                     {run.thread_id && <span className="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold tracking-wide text-brand uppercase">{t('fromChat')}</span>}
                   </span>
                   <span className="block truncate text-sm text-muted">{run.summary}</span>
-                  <span className="mt-0.5 block text-xs text-muted">{formatWhen(run.created_at)}</span>
+                  <span className="mt-0.5 block text-xs text-muted">{formatWhen(run.created_at, lang)}</span>
                 </span>
               </button>
               <button type="button" title={t('deleteRun')} aria-label={t('deleteRun')} onClick={() => remove(run)}

@@ -1,10 +1,12 @@
 import { createContext, useCallback, useContext, useState } from 'react'
 import { AnimatePresence, motion } from 'motion/react'
 import { X } from 'lucide-react'
+import { useI18n } from './i18n'
 
 const ToastContext = createContext(null)
 
 export function ToastProvider({ children }) {
+  const { t: tr } = useI18n()
   const [toasts, setToasts] = useState([])
 
   const dismiss = useCallback((id) => setToasts((prev) => prev.filter((t) => t.id !== id)), [])
@@ -34,7 +36,7 @@ export function ToastProvider({ children }) {
                 <button className="shrink-0 rounded-lg px-2 py-1 text-sm font-semibold text-brand hover:bg-brand-soft"
                   onClick={() => { t.action.onClick(); dismiss(t.id) }}>{t.action.label}</button>
               )}
-              <button className="shrink-0 text-muted hover:text-ink" onClick={() => dismiss(t.id)} aria-label="Dismiss"><X size={16} /></button>
+              <button className="shrink-0 text-muted hover:text-ink" onClick={() => dismiss(t.id)} aria-label={tr('dismiss')}><X size={16} /></button>
             </motion.div>
           ))}
         </AnimatePresence>

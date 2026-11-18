@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react'
 import { Navigate, Outlet, Route, Routes, useLocation } from 'react-router'
 import { useAuth } from '@clerk/react'
+import { CloudRain } from 'lucide-react'
 import { FullPageSpinner } from './components/common'
 import { AppDataProvider, useAppData } from './lib/appData'
+import { useI18n } from './lib/i18n'
 
 // Separate bundles: visitors download only the landing page; the app loads after sign-in.
 const Landing = lazy(() => import('./pages/Landing'))
@@ -24,11 +26,12 @@ function RequireAuth() {
 
 function RequireOnboarded() {
   const { profile, onboarded, error } = useAppData()
+  const { t } = useI18n()
   if (profile === undefined) return <FullPageSpinner />
   if (error) {
     return (
       <div className="grid h-full place-items-center p-6 text-center">
-        <div><div className="text-3xl">🌧️</div><p className="mt-2 font-semibold">Can't reach the AgriAssist server</p>
+        <div><CloudRain className="mx-auto text-sky" size={36} /><p className="mt-2 font-semibold">{t('serverDown')}</p>
           <p className="text-sm text-muted">{error}</p></div>
       </div>
     )

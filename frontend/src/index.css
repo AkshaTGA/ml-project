@@ -1,31 +1,35 @@
 @import "tailwindcss";
 
-/* Warm, low-contrast farm palette. Light is the designed look; dark follows the OS. */
+/* Pasture, straw and soil. Light is the designed look. */
 :root {
-  --c-bg: #f3f6ef;
-  --c-surface: #ffffff;
-  --c-surface-2: #eef3e6;
-  --c-surface-3: #e3ecd8;
-  --c-border: #e2e8d8;
-  --c-ink: #1d3322;
-  --c-muted: #6a7564;
-  --c-brand: #3c8f45;
-  --c-brand-strong: #246b30;
-  --c-brand-soft: #d7efc4;
-  --c-ask: #e5f6d8;
-  --c-mint: #d7f0c6;
-  --c-sand: #f6e6c2;
-  --c-sand-ink: #8a5a28;
-  --c-sky-tile: #d7e8fa;
-  --c-lilac: #e7dff8;
-  --c-lilac-ink: #6a4c96;
-  --c-gold: #c4922a;
-  --c-gold-soft: #f8edd4;
-  --c-sky: #3d88c4;
-  --c-sky-soft: #e3f1fb;
-  --c-danger: #c45c4a;
-  --c-danger-soft: #f8e4de;
-  --c-earth: #b8894e;
+  --c-bg: #f4efe4;
+  --c-surface: #fffdf8;
+  --c-surface-2: #efe6d4;
+  --c-surface-3: #e4d8c0;
+  --c-border: #e0d3bc;
+  --c-ink: #2a261c;
+  --c-muted: #74685a;
+  --c-brand: #3f6b3a;
+  --c-brand-strong: #2a4a28;
+  --c-brand-soft: #dce8c8;
+  --c-ask: #e7f0d4;
+  --c-mint: #d5e4c0;
+  --c-sand: #f3e2c0;
+  --c-sand-ink: #7a4e24;
+  --c-sky-tile: #d5e4ee;
+  --c-lilac: #efe6d4;
+  --c-lilac-ink: #6e5340;
+  --c-gold: #b8862f;
+  --c-gold-soft: #f6ead0;
+  --c-sky: #3e7ea8;
+  --c-sky-soft: #e4f0f4;
+  --c-danger: #a84b3c;
+  --c-danger-soft: #f6e4dc;
+  --c-earth: #8d5a32;
+  --c-pasture-deep: #243820;
+  --c-pasture: #3d5c32;
+  --c-pasture-light: #7a8a3e;
+  --c-straw: #e2c07a;
   color-scheme: light;
 }
 
@@ -116,7 +120,7 @@ body {
     ),
     radial-gradient(
       760px 380px at -12% 8%,
-      color-mix(in srgb, var(--c-sky-soft) 80%, transparent),
+      color-mix(in srgb, var(--c-gold-soft) 90%, transparent),
       transparent 52%
     ),
     var(--c-bg);
@@ -267,4 +271,9 @@ button:disabled {
 /* Clerk widgets inherit our fonts */
 .cl-rootBox {
   font-family: var(--font-sans);
+}
+
+/* Deep pasture panels on the landing, sign-in and onboarding screens. */
+.pasture-panel {
+  background: linear-gradient(135deg, var(--c-pasture-deep), var(--c-pasture) 55%, var(--c-pasture-light));
 }

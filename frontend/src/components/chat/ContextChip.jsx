@@ -1,8 +1,10 @@
 import { CornerUpLeft, FlaskConical, X } from 'lucide-react'
 import { AuthImage } from '../common'
+import { useI18n } from '../../lib/i18n'
 
 // A saved check or an earlier message, shown as a small card instead of pasted text.
 export default function ContextChip({ item, onOpen, onRemove }) {
+  const { t } = useI18n()
   return (
     <div className="flex max-w-md overflow-hidden rounded-2xl border border-line bg-surface text-left shadow-sm">
       <button type="button" onClick={() => onOpen?.(item)}
@@ -20,7 +22,7 @@ export default function ContextChip({ item, onOpen, onRemove }) {
         </span>
       </button>
       {onRemove && (
-        <button type="button" onClick={onRemove} aria-label="Remove"
+        <button type="button" onClick={onRemove} aria-label={t('removeItem')}
           className="grid w-8 shrink-0 place-items-center text-muted hover:text-ink">
           <X size={14} />
         </button>
