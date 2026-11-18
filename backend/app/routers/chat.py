@@ -9,13 +9,14 @@ import asyncio
 import json
 import logging
 import time
+from typing import Literal
 
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
-from langchain_core.messages import AIMessage
-from pydantic import BaseModel
+from langchain_core.messages import AIMessage, HumanMessage
+from pydantic import BaseModel, Field
 
-from .. import memory
+from .. import memory, runs
 from ..agent import build_user_message
 from ..auth import current_user
 from ..config import IS_LLM_CONFIGURED
@@ -28,14 +29,35 @@ background_tasks: set[asyncio.Task] = set()
 running: dict[str, asyncio.Task] = {}
 
 
+class ContextRef(BaseModel):
+    type: Literal["tool_run", "message"]
+    id: str = Field(min_length=1, max_length=80)
+    thread_id: str | None = None
+
+
 class ChatRequest(BaseModel):
     thread_id: str
     message: str = ""
     attachments: list[str] = []
+    # Saved checks or earlier messages the user pointed at. Resolved server-side into a short brief.
+    context: list[ContextRef] = []
     voice: bool = False
     # Off by default: skip reasoning text and tool arguments.
     # The answer, tool results and a short status still stream.
     verbose: bool = False
+
+
+def _turn_ids(messages: list) -> dict:
+    """Ids of the latest user bubble and the answer bubble, so the client can reply to them."""
+    user_message_id = None
+    assistant_message_id = None
+    for message in messages:
+        if isinstance(message, HumanMessage):
+            user_message_id = message.id
+            assistant_message_id = None
+        elif isinstance(message, AIMessage):
+            assistant_message_id = message.id
+    return {"user_message_id": user_message_id, "assistant_message_id": assistant_message_id}
 
 
 def sse(event: dict) -> str:
@@ -65,8 +87,21 @@ async def chat(body: ChatRequest, request: Request, user_id: str = Depends(curre
         ms = lambda: round((time.perf_counter() - started) * 1000)  # noqa: E731
         timing = {}
         emit({"type": "status", "step": "context", "label": "Looking at your farm"})
+        if len(body.context) > 3:
+            emit({"type": "error", "message": "Attach at most 3 checks or replies"})
+            emit({"type": "done"})
+            return
         try:
-            user_message = await build_user_message(user_id, body.message, body.attachments)
+            cards, brief, extra_images = await runs.resolve_context(user_id, body.context, graph, body.thread_id)
+        except LookupError as exc:
+            emit({"type": "error", "message": str(exc)})
+            emit({"type": "done"})
+            return
+        try:
+            user_message = await build_user_message(
+                user_id, body.message, body.attachments, context_cards=cards,
+                context_text=brief, extra_images=extra_images,
+            )
             async for mode, chunk in graph.astream({"messages": [user_message]}, config,
                                                    stream_mode=["messages", "updates", "custom"]):
                 if mode == "custom":
@@ -105,6 +140,8 @@ async def chat(body: ChatRequest, request: Request, user_id: str = Depends(curre
             return
 
         timing["total_ms"] = ms()
+        state = await graph.aget_state(config)
+        emit({"type": "message_ids", **_turn_ids(state.values.get("messages", []) if state else [])})
         emit({"type": "answer_done", "timing": timing})
 
         # Memory work happens after the answer, in the same background task.

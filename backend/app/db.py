@@ -49,6 +49,20 @@ CREATE TABLE IF NOT EXISTS files (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 CREATE INDEX IF NOT EXISTS files_user ON files (user_id);
+CREATE TABLE IF NOT EXISTS tool_runs (
+    id TEXT PRIMARY KEY,
+    user_id TEXT NOT NULL,
+    tool TEXT NOT NULL,
+    title TEXT NOT NULL,
+    summary TEXT NOT NULL,
+    inputs JSONB NOT NULL DEFAULT '{}',
+    result JSONB NOT NULL DEFAULT '{}',
+    image_id TEXT,
+    thread_id TEXT,
+    message_id TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS tool_runs_user_created ON tool_runs (user_id, created_at DESC);
 """
 
 pool: AsyncConnectionPool | None = None

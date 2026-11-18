@@ -10,16 +10,21 @@ from .config import (
     GEMINI_BASE_URL,
     LLM_API_KEY,
     LLM_TEMPERATURE,
+    MUSE_API_KEY,
+    MUSE_BASE_URL,
+    MUSE_FAST_REASONING_EFFORT,
+    MUSE_REASONING_EFFORT,
     NVIDIA_API_KEY,
     NVIDIA_BASE_URL,
     USE_GEMINI,
+    USE_MUSE,
     USE_NVIDIA,
 )
 
 logger = logging.getLogger(__name__)
 
 
-def _make_llm(model: str, temperature: float, streaming: bool = False):
+def _make_llm(model: str, temperature: float, streaming: bool = False, reasoning_effort: str | None = None):
     """Return the appropriate LangChain chat model based on the active provider."""
     if USE_GEMINI:
         try:
@@ -54,6 +59,18 @@ def _make_llm(model: str, temperature: float, streaming: bool = False):
             streaming=streaming,
             max_retries=2,
         )
+    elif USE_MUSE:
+        from langchain_openai import ChatOpenAI  # Meta Model API is OpenAI-compatible
+        logger.info("LLM provider: Meta Muse  model=%s  reasoning=%s", model, reasoning_effort)
+        # No temperature: Meta recommends the defaults for these always-reasoning models.
+        return ChatOpenAI(
+            model=model,
+            api_key=MUSE_API_KEY or "missing",
+            base_url=MUSE_BASE_URL,
+            reasoning_effort=reasoning_effort,
+            streaming=streaming,
+            max_retries=2,
+        )
     else:
         from langchain_xai import ChatXAI
         logger.info("LLM provider: xAI Grok  model=%s", model)
@@ -73,6 +90,7 @@ def main_llm():
         model=ACTIVE_LLM_MODEL,
         temperature=LLM_TEMPERATURE,
         streaming=True,
+        reasoning_effort=MUSE_REASONING_EFFORT,
     )
 
 
@@ -83,6 +101,7 @@ def fast_llm():
         model=ACTIVE_FAST_MODEL,
         temperature=0,
         streaming=False,
+        reasoning_effort=MUSE_FAST_REASONING_EFFORT,
     )
 
 

@@ -3,6 +3,8 @@ import { useLocation, useNavigate, useParams } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
 import { Brain, CloudSun, GitBranch, IndianRupee, Leaf, PawPrint, RotateCcw, Sprout } from 'lucide-react'
 import Composer from '../components/chat/Composer'
+import { flashFocus } from '../lib/focus'
+import { stripUIBlocks } from '../components/chat/UIBlocks'
 import Message from '../components/chat/Message'
 import VoiceMode from '../components/chat/VoiceMode'
 import { FullPageSpinner } from '../components/common'
@@ -121,13 +123,13 @@ export default function ChatPage() {
     if (el && stickRef.current) el.scrollTo({ top: el.scrollHeight, behavior: busy ? 'auto' : 'smooth' })
   })
 
-  const send = useCallback(async (text, files = [], { voice = false, onEvent } = {}) => {
+  const send = useCallback(async (text, files = [], { voice = false, onEvent, context = [] } = {}) => {
     const id = threadId
     const isNew = !(threadCache.get(id) || []).length
     stickRef.current = true
     setMessages(id, (prev) => [
       ...prev.map((m) => (m.suggestions ? { ...m, suggestions: [] } : m)),
-      { role: 'user', content: text, attachments: files, voice },
+      { role: 'user', content: text, attachments: files, context, voice },
       { role: 'assistant', content: '', steps: [], status: 'streaming' },
     ])
     if (isNew) {
@@ -142,9 +144,17 @@ export default function ChatPage() {
     let answered = false
     try {
       await api.chat({
-        threadId: id, message: text, attachments: files.map((f) => f.id), voice, verbose: verboseSteps(), signal: controller.signal,
+        threadId: id, message: text, attachments: files.map((f) => f.id), context, voice, verbose: verboseSteps(), signal: controller.signal,
         onEvent(e) {
           onEvent?.(e)
+          if (e.type === 'message_ids') {
+            setMessages(id, (prev) => prev.map((message, index) => {
+              if (index === prev.length - 2 && message.role === 'user') return { ...message, id: e.user_message_id || message.id }
+              if (index === prev.length - 1 && message.role === 'assistant') return { ...message, id: e.assistant_message_id || message.id }
+              return message
+            }))
+            return
+          }
           if (e.type === 'answer_done') answered = true
           if (e.type === 'answer_done' || e.type === 'error') setBusy(false)
           if (e.type === 'memory_saved') {
@@ -196,16 +206,25 @@ export default function ChatPage() {
 
   // Shortcuts from the dashboard (ask, scan a leaf, check pasture, voice).
   const handledStateRef = useRef(null)
+  const focusRef = useRef(null)
   useEffect(() => {
     const state = location.state
     if (!state || handledStateRef.current === state) return
     handledStateRef.current = state
+    if (state.focus) focusRef.current = state.focus
     navigate(location.pathname, { replace: true, state: null })
-    if (state.prompt) send(state.prompt)
+    if (state.prompt || state.context) send(state.prompt || '', [], { context: state.context || [] })
     if (state.action === 'scan') composerRef.current?.pickImage('Please check this leaf/plant for disease and tell me the treatment.')
     if (state.action === 'pasture') composerRef.current?.pickImage('Estimate the biomass of this pasture and how long it can feed my animals.')
     if (state.action === 'voice') setVoiceOpen(true)
   }, [location.state]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    const focus = focusRef.current
+    if (!focus || loading) return undefined
+    const timer = setTimeout(() => { if (flashFocus(focus)) focusRef.current = null }, 80)
+    return () => clearTimeout(timer)
+  }, [loading, messages.length, threadId])
 
   async function speak(index, content) {
     speaker.current?.stop()
@@ -259,14 +278,14 @@ export default function ChatPage() {
   const editAndResend = guard(async (turn, text) => {
     const question = messages[cutIndex(messages, turn)]
     await rewind(turn, { undoable: false })
-    send(text, question?.attachments || [])
+    send(text, question?.attachments || [], { context: question?.context || [] })
   })
 
   const regenerate = guard(async (turn) => {
     const question = messages[cutIndex(messages, turn)]
     if (!question) return
     await rewind(turn, { undoable: false })
-    send(question.content, question.attachments || [])
+    send(question.content, question.attachments || [], { context: question.context || [] })
   })
 
   const rewindAfterAnswer = guard(async (turn) => { await rewind(turn + 1) })
@@ -281,6 +300,33 @@ export default function ChatPage() {
   })
 
   // Only conversations the server already knows about can be rewound or branched.
+  function replyTo(message) {
+    if (!message?.id || busy) return
+    const text = (message.content || '').replace(/```[\s\S]*?```/g, ' ').replace(/\s+/g, ' ').trim()
+    composerRef.current?.addContext({
+      type: 'message',
+      id: message.id,
+      thread_id: threadId,
+      title: message.role === 'user' ? 'You' : 'AgriAssist',
+      preview: text.slice(0, 90) || 'Message',
+      focus_id: message.id,
+    })
+  }
+
+  function openContext(item) {
+    const focus = item.focus_id || item.id
+    if (item.type === 'tool_run' && !item.thread_id) {
+      navigate(`/app/models?run=${item.id}`)
+      return
+    }
+    const thread = item.thread_id || threadId
+    if (thread !== threadId) {
+      navigate(`/app/chat/${thread}`, { state: { focus } })
+      return
+    }
+    if (!flashFocus(focus)) toast({ title: 'Could not find that message' })
+  }
+
   const persisted = !!routeId
   // Turn number of every message (a user message starts a new turn).
   const turnOf = messages.reduce((acc, m) => [...acc, Math.max((acc.at(-1) ?? -1) + (m.role === 'user' ? 1 : 0), 0)], [])
@@ -316,8 +362,10 @@ export default function ChatPage() {
               const turn = turnOf[i]
               const actionable = persisted && m.status !== 'streaming'
               return (
-                <Message key={i} message={m} isLast={i === messages.length - 1} onSuggestion={ask}
-                  onSpeak={() => speak(i, m.content)} speaking={speakingIdx === i} busy={busy}
+                <Message key={m.id || i} message={m} isLast={i === messages.length - 1} onSuggestion={ask}
+                  onSpeak={() => speak(i, stripUIBlocks(m.content))} speaking={speakingIdx === i} busy={busy}
+                  onOpenContext={openContext}
+                  onReply={m.id && m.status !== 'streaming' ? () => replyTo(m) : undefined}
                   onEditResend={actionable && m.role === 'user' ? (text) => editAndResend(turn, text) : undefined}
                   onRewind={actionable ? () => (m.role === 'user' ? rewindBeforeUser(turn) : rewindAfterAnswer(turn)) : undefined}
                   onRegenerate={actionable && m.role === 'assistant' ? () => regenerate(turn) : undefined}
@@ -328,8 +376,8 @@ export default function ChatPage() {
         )}
       </div>
       <div className="px-3 pb-3 sm:px-4">
-        <Composer ref={composerRef} busy={busy} onSend={(text, files) => send(text, files)}
-          onStop={stop} onVoiceMode={() => setVoiceOpen(true)} />
+        <Composer ref={composerRef} busy={busy} onSend={(text, files, extra) => send(text, files, extra)}
+          onOpenContext={openContext} onStop={stop} onVoiceMode={() => setVoiceOpen(true)} />
       </div>
       {dragging && (
         <div className="pointer-events-none absolute inset-3 grid place-items-center rounded-3xl border-2 border-dashed border-brand bg-brand-soft/80 text-lg font-bold text-brand-strong">

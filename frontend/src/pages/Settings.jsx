@@ -14,19 +14,21 @@ import { VOICES, voiceId, voiceSettings } from '../lib/voices'
 const TABS = [
   ['profile', UserCog, 'profile'], ['memory', Brain, 'memory'], ['style', Sparkles, 'style'], ['language', Languages, 'languageVoice'],
 ]
-const PRESETS = [
-  'Keep answers short and to the point.',
-  "Explain simply, like I'm new to farming.",
-  'Use local units like bigha and quintal.',
-  'Always suggest an organic option first.',
-  'Reply in Hinglish (Hindi in English letters).',
-  'Give approximate costs in rupees.',
-  'Use step-by-step lists.',
-]
+const PRESET_KEYS = ['presetShort', 'presetSimple', 'presetUnits', 'presetOrganic', 'presetHinglish', 'presetRupees', 'presetSteps']
 const PROFILE_FIELDS = [
-  ['name', 'Name'], ['role', 'Role'], ['location_name', 'Location'], ['land_area', 'Land area'], ['land_unit', 'Land unit'],
-  ['crops', 'Crops'], ['livestock', 'Livestock'], ['irrigation', 'Irrigation'], ['soil', 'Soil'], ['goals', 'Goals & challenges'],
+  ['name', 'fieldName'], ['role', 'fieldRole'], ['location_name', 'fieldLocation'], ['land_area', 'fieldLandArea'], ['land_unit', 'fieldLandUnit'],
+  ['crops', 'fieldCrops'], ['livestock', 'fieldLivestock'], ['irrigation', 'fieldIrrigation'], ['soil', 'fieldSoil'], ['goals', 'fieldGoals'],
 ]
+const VALUE_KEY = {
+  farmer: 'roleFarmer', herder: 'roleHerder', mixed: 'roleMixed', agribusiness: 'roleBusiness', student: 'roleStudent',
+  acre: 'unitAcre', bigha: 'unitBigha', hectare: 'unitHectare',
+  Rainfed: 'irrRainfed', Canal: 'irrCanal', 'Borewell / tubewell': 'irrBorewell', Drip: 'irrDrip', Sprinkler: 'irrSprinkler', 'Pond / tank': 'irrPond',
+  Alluvial: 'soilAlluvial', 'Black (cotton)': 'soilBlack', Red: 'soilRed', Laterite: 'soilLaterite', Sandy: 'soilSandy', Clay: 'soilClay', Loamy: 'soilLoamy', "Don't know": 'soilUnknown',
+  Wheat: 'cropWheat', Rice: 'cropRice', Maize: 'cropMaize', Cotton: 'cropCotton', Sugarcane: 'cropSugarcane', Soybean: 'cropSoybean',
+  Mustard: 'cropMustard', Chickpea: 'cropChickpea', Onion: 'cropOnion', Tomato: 'cropTomato', Potato: 'cropPotato', Banana: 'cropBanana',
+  Mango: 'cropMango', Vegetables: 'cropVegetables', Millets: 'cropMillets', Groundnut: 'cropGroundnut', 'Pasture / fodder': 'cropPasture', Fruits: 'cropFruits',
+  cows: 'animalCows', buffaloes: 'animalBuffaloes', goats: 'animalGoats', sheep: 'animalSheep', poultry: 'animalPoultry',
+}
 
 const card = 'rounded-3xl border border-line bg-surface p-5 shadow-sm'
 
@@ -50,7 +52,22 @@ function parse(field, text) {
 }
 
 /** One editable memory row: shows text, with inline edit (with voice typing) and delete. */
-function MemoryRow({ label, text, meta, onSave, onDelete }) {
+function knownText(value, t) {
+  return VALUE_KEY[value] ? t(VALUE_KEY[value]) : value
+}
+
+function viewOf(field, value, t) {
+  if (value == null || value === '') return null
+  if (field === 'crops') return value.length ? value.map((crop) => knownText(crop, t)).join(', ') : null
+  if (field === 'livestock') {
+    const parts = Object.entries(value || {}).filter(([, n]) => n).map(([k, n]) => `${n} ${knownText(k, t)}`)
+    return parts.length ? parts.join(', ') : null
+  }
+  return knownText(String(value), t)
+}
+
+function MemoryRow({ label, text, view, meta, onSave, onDelete }) {
+  const { t } = useI18n()
   const [editing, setEditing] = useState(false)
   const [value, setValue] = useState(text || '')
   const [busy, setBusy] = useState(false)
@@ -75,14 +92,14 @@ function MemoryRow({ label, text, meta, onSave, onDelete }) {
             <button onClick={() => { setEditing(false); setValue(text || '') }} className="mt-1 grid size-9 place-items-center rounded-xl bg-surface-3"><X size={16} /></button>
           </div>
         ) : (
-          <div className={`text-sm ${text ? '' : 'italic text-muted'}`}>{text || 'Not set'}</div>
+          <div className={`text-sm ${(view ?? text) ? '' : 'italic text-muted'}`}>{view ?? text || t('notSet')}</div>
         )}
         {meta && !editing && <div className="mt-0.5 text-[11px] text-muted">{meta}</div>}
       </div>
       {!editing && (
         <div className="flex gap-1 opacity-60 transition group-hover:opacity-100">
-          <button onClick={() => setEditing(true)} className="rounded-lg p-1.5 text-muted hover:bg-surface hover:text-ink" title="Edit"><Pencil size={15} /></button>
-          {text && <button onClick={onDelete} className="rounded-lg p-1.5 text-muted hover:bg-surface hover:text-danger" title="Remove"><Trash2 size={15} /></button>}
+          {onSave && <button onClick={() => setEditing(true)} className="rounded-lg p-1.5 text-muted hover:bg-surface hover:text-ink" title={t('edit')}><Pencil size={15} /></button>}
+          {text && <button onClick={onDelete} className="rounded-lg p-1.5 text-muted hover:bg-surface hover:text-danger" title={t('delete')}><Trash2 size={15} /></button>}
         </div>
       )}
     </motion.li>
@@ -92,11 +109,12 @@ function MemoryRow({ label, text, meta, onSave, onDelete }) {
 function MemoryTab() {
   const api = useApi()
   const toast = useToast()
+  const { t } = useI18n()
   const { setProfile } = useAppData()
   const [data, setData] = useState(null)
   const [query, setQuery] = useState('')
 
-  const load = () => api.memory().then(setData).catch((e) => toast({ title: 'Could not load memory', message: e.message }))
+  const load = () => api.memory().then(setData).catch((e) => toast({ title: t('couldNotLoad'), message: e.message }))
   useEffect(() => { load() }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!data) return <div className="grid h-40 place-items-center"><Spinner /></div>
@@ -112,32 +130,33 @@ function MemoryTab() {
     load()
   }
   async function clearAll() {
-    if (!confirm('Forget everything AgriAssist learned from your chats? Your farm profile and chat history stay.')) return
+    if (!confirm(t('clearMemoriesConfirm'))) return
     const r = await api.clearMemory()
-    toast({ title: 'Memory cleared', message: `${r.facts_deleted} facts and ${r.summaries_cleared} summaries removed.` })
+    toast({ title: t('memoryCleared'), message: t('factsRemoved', { facts: r.facts_deleted, summaries: r.summaries_cleared }) })
     load()
   }
 
   return (
     <div className="space-y-5">
-      <p className="text-sm text-muted">This is everything AgriAssist uses to personalise answers. Edit anything that is wrong, or remove it. Changes apply to your next message.</p>
+      <p className="text-sm text-muted">{t('memoryIntro')}</p>
 
       <section className={card}>
-        <h3 className="flex items-center gap-2 font-bold"><Sprout size={18} className="text-brand" /> Farm profile <span className="text-xs font-normal text-muted">· long-term</span></h3>
+        <h3 className="flex items-center gap-2 font-bold"><Sprout size={18} className="text-brand" /> {t('profile')} <span className="text-xs font-normal text-muted">· {t('longTerm')}</span></h3>
         <ul className="mt-2">
           {PROFILE_FIELDS.map(([field, label]) => (
-            <MemoryRow key={field} label={label} text={display(field, data.profile?.[field])}
-              onSave={(t) => editProfile(field, t)} onDelete={() => removeProfile(field)} />
+            <MemoryRow key={field} label={t(label)} text={display(field, data.profile?.[field])} view={viewOf(field, data.profile?.[field], t)}
+              onSave={(value) => editProfile(field, value)} onDelete={() => removeProfile(field)} />
           ))}
         </ul>
       </section>
 
       <section className={card}>
         <div className="flex flex-wrap items-center gap-3">
-          <h3 className="flex items-center gap-2 font-bold"><Brain size={18} className="text-brand" /> Learned facts <span className="text-xs font-normal text-muted">· long-term · {data.facts.length}</span></h3>
+          <h3 className="flex items-center gap-2 font-bold"><Brain size={18} className="text-brand" /> {t('memory')} <span className="text-xs font-normal text-muted">· {t('longTerm')}</span></h3>
+          <p className="mt-1 text-xs text-muted">{t('memorySummaryHelp')}</p>
           <div className="relative ml-auto">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted" />
-            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search memories"
+            <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder={t('searchMemories')}
               className="w-48 rounded-xl border border-line bg-bg py-1.5 pl-8 pr-3 text-sm outline-none focus:border-brand" />
           </div>
         </div>
@@ -145,18 +164,29 @@ function MemoryTab() {
           <AnimatePresence initial={false}>
             {facts.map((f) => (
               <MemoryRow key={f.id} text={f.text}
-                meta={`${f.category === 'onboarding' ? 'From setup' : 'Learned in chat'} · ${new Date(f.edited_at || f.created_at).toLocaleDateString()}${f.edited_at ? ' · edited' : ''}`}
+                meta={`${f.category === 'onboarding' ? t('fromSetup') : t('learnedInChat')} · ${new Date(f.edited_at || f.created_at).toLocaleDateString()}${f.edited_at ? ` · ${t('editedMark')}` : ''}`}
                 onSave={async (t) => { const m = await api.editMemory('fact', f.id, t); setData((d) => ({ ...d, facts: d.facts.map((x) => (x.id === f.id ? { ...x, ...m } : x)) })) }}
                 onDelete={async () => { await api.forget('fact', f.id); setData((d) => ({ ...d, facts: d.facts.filter((x) => x.id !== f.id) })) }} />
             ))}
           </AnimatePresence>
-          {facts.length === 0 && <li className="px-3 py-4 text-sm text-muted">{query ? 'No matching memories.' : 'Nothing learned yet. Chat with AgriAssist and it will remember what matters.'}</li>}
+          {facts.length === 0 && <li className="px-3 py-4 text-sm text-muted">{query ? t('noMatchMemory') : t('nothingLasting')}</li>}
         </ul>
+        {data.candidates?.length > 0 && (
+          <div className="mt-4 border-t border-line pt-3">
+            <p className="text-xs font-semibold text-muted">{t('noticedOnce')}</p>
+            <ul className="mt-1">
+              {data.candidates.map((item) => (
+                <MemoryRow key={item.id} text={item.text} meta={t('waitingConfirm')}
+                  onDelete={async () => { await api.forget('candidate', item.id); setData((d) => ({ ...d, candidates: d.candidates.filter((x) => x.id !== item.id) })) }} />
+              ))}
+            </ul>
+          </div>
+        )}
       </section>
 
       <section className={card}>
-        <h3 className="flex items-center gap-2 font-bold"><History size={18} className="text-brand" /> Conversation summaries <span className="text-xs font-normal text-muted">· short-term</span></h3>
-        <p className="mt-1 text-xs text-muted">Recent summaries help AgriAssist continue where you left off in a new chat.</p>
+        <h3 className="flex items-center gap-2 font-bold"><History size={18} className="text-brand" /> {t('summariesTitle')} <span className="text-xs font-normal text-muted">· {t('shortTerm')}</span></h3>
+        <p className="mt-1 text-xs text-muted">{t('summariesHelp')}</p>
         <ul className="mt-2">
           <AnimatePresence initial={false}>
             {data.threads.map((th) => (
@@ -165,12 +195,12 @@ function MemoryTab() {
                 onDelete={async () => { await api.forget('thread', th.id); setData((d) => ({ ...d, threads: d.threads.filter((x) => x.id !== th.id) })) }} />
             ))}
           </AnimatePresence>
-          {data.threads.length === 0 && <li className="px-3 py-4 text-sm text-muted">No summaries yet.</li>}
+          {data.threads.length === 0 && <li className="px-3 py-4 text-sm text-muted">{t('noSummaries')}</li>}
         </ul>
       </section>
 
       <button onClick={clearAll} className="flex items-center gap-2 rounded-2xl border border-danger/40 px-4 py-2.5 text-sm font-semibold text-danger hover:bg-danger-soft">
-        <Trash2 size={16} /> Clear all learned memories
+        <Trash2 size={16} /> {t('clearMemories')}
       </button>
     </div>
   )
@@ -209,9 +239,9 @@ function StyleTab() {
     setSaving(true)
     try {
       setProfile(await api.updateProfile({ custom_instructions: text }))
-      toast({ icon: <Check size={16} />, title: t('saved'), message: 'AgriAssist will follow your style from the next message.' })
+      toast({ icon: <Check size={16} />, title: t('saved'), message: t('styleSaved') })
     } catch (err) {
-      toast({ title: 'Could not save', message: err.message })
+      toast({ title: t('couldNotSaveVoice'), message: err.message })
     }
     setSaving(false)
   }
@@ -220,18 +250,21 @@ function StyleTab() {
     <div className="space-y-4">
       <DetailCard />
       <div className={card}>
-        <h3 className="font-bold">How should AgriAssist talk to you?</h3>
-        <p className="mt-1 text-sm text-muted">Your instructions are added on top of AgriAssist's own rules. They change tone, language and format, but never switch off safety advice or tool use.</p>
+        <h3 className="font-bold">{t('styleTitle')}</h3>
+        <p className="mt-1 text-sm text-muted">{t('styleHelp')}</p>
         <div className="mt-4 flex flex-wrap gap-2">
-          {PRESETS.map((p) => (
-            <button key={p} onClick={() => setText((v) => (v.includes(p) ? v : [v.trim(), p].filter(Boolean).join('\n')))}
-              className={`rounded-full border px-3 py-1.5 text-sm transition ${text.includes(p) ? 'border-brand bg-brand-soft text-brand-strong' : 'border-line hover:border-brand'}`}>
-              + {p}
-            </button>
-          ))}
+          {PRESET_KEYS.map((key) => {
+            const line = t(key)
+            return (
+              <button key={key} onClick={() => setText((v) => (v.includes(line) ? v : [v.trim(), line].filter(Boolean).join('\n')))}
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${text.includes(line) ? 'border-brand bg-brand-soft text-brand-strong' : 'border-line hover:border-brand'}`}>
+                + {line}
+              </button>
+            )
+          })}
         </div>
         <VoiceField as="textarea" rows={7} value={text} onChange={(v) => setText(v.slice(0, 1500))} className="mt-4"
-          placeholder="e.g. Talk to me like a friendly neighbour. I prefer organic methods. Always tell me the cost per acre." />
+          placeholder={t('stylePlaceholder')} />
         <div className="mt-2 flex items-center justify-between text-xs text-muted">
           <span>{text.length} / 1500</span>
           <button onClick={save} disabled={!dirty || saving}
@@ -241,12 +274,12 @@ function StyleTab() {
         </div>
       </div>
       <div className="rounded-3xl border border-dashed border-line p-5 text-sm">
-        <div className="font-semibold">How it's layered</div>
+        <div className="font-semibold">{t('layerTitle')}</div>
         <ol className="mt-2 space-y-1 text-muted">
-          <li>1. AgriAssist's safety and tool rules (fixed)</li>
-          <li className="font-semibold text-brand-strong">2. Your style instructions (above)</li>
-          <li>3. Your farm profile, memories and recent chats</li>
-          <li>4. Your message</li>
+          <li>1. {t('layer1')}</li>
+          <li className="font-semibold text-brand-strong">2. {t('layer2')}</li>
+          <li>3. {t('layer3')}</li>
+          <li>4. {t('layer4')}</li>
         </ol>
       </div>
     </div>
@@ -254,11 +287,12 @@ function StyleTab() {
 }
 
 function ProfileTab() {
+  const { t } = useI18n()
   return (
     <div className={card}>
-      <p className="text-sm text-muted">Your farm profile is part of AgriAssist's memory. Edit any field below, or redo the full setup.</p>
+      <p className="text-sm text-muted">{t('farmProfileHelp')}</p>
       <Link to="/onboarding?redo=1" className="mt-3 inline-flex items-center gap-2 rounded-xl bg-brand-soft px-4 py-2 text-sm font-semibold text-brand-strong">
-        <Sprout size={16} /> Redo farm setup
+        <Sprout size={16} /> {t('redoSetup')}
       </Link>
       <div className="mt-4"><MemoryTabProfileOnly /></div>
     </div>
@@ -267,12 +301,13 @@ function ProfileTab() {
 
 function MemoryTabProfileOnly() {
   const api = useApi()
+  const { t } = useI18n()
   const { profile, setProfile } = useAppData()
   return (
     <ul>
       {PROFILE_FIELDS.map(([field, label]) => (
-        <MemoryRow key={field} label={label} text={display(field, profile?.[field])}
-          onSave={async (t) => setProfile(await api.editMemory('profile', field, parse(field, t)))}
+        <MemoryRow key={field} label={t(label)} text={display(field, profile?.[field])} view={viewOf(field, profile?.[field], t)}
+          onSave={async (value) => setProfile(await api.editMemory('profile', field, parse(field, value)))}
           onDelete={async () => { await api.forget('profile', field); setProfile(await api.profile().then((r) => r.profile)) }} />
       ))}
     </ul>
@@ -342,7 +377,7 @@ function LanguageTab() {
       const next = { ...voiceSettings(profile), [key]: id }
       setProfile(await api.updateProfile({ voice_settings: next }))
     } catch (err) {
-      toast({ title: 'Could not save voice', message: err.message })
+      toast({ title: t('couldNotSaveVoice'), message: err.message })
     }
   }
 
@@ -354,7 +389,7 @@ function LanguageTab() {
     const queue = new AudioQueue({ onIdle: () => setPreviewing((current) => (current === key ? null : current)) })
     previewRef.current = queue
     queue.push(api.tts(sample, { preferred_language: profile?.language, speaker }).then((r) => r.audios).catch((err) => {
-      toast({ title: 'Could not play this voice', message: err.message })
+      toast({ title: t('couldNotPlay'), message: err.message })
       setPreviewing(null)
       return []
     }))
@@ -363,7 +398,7 @@ function LanguageTab() {
   return (
     <div className="space-y-4">
       <div className={card}>
-        <h3 className="font-bold">App language</h3>
+        <h3 className="font-bold">{t('appLanguage')}</h3>
         <div className="mt-3 flex flex-wrap gap-2">
           {LANGUAGES.filter((l) => l.ui).map((l) => (
             <button key={l.code} onClick={() => setLang(l.code)}
@@ -374,8 +409,8 @@ function LanguageTab() {
         </div>
       </div>
       <div className={card}>
-        <h3 className="font-bold">Reply & voice language</h3>
-        <p className="mt-1 text-sm text-muted">AgriAssist replies in whatever language you write or speak. This is the default for voice and when it can't tell.</p>
+        <h3 className="font-bold">{t('replyLanguage')}</h3>
+        <p className="mt-1 text-sm text-muted">{t('replyLanguageHelp')}</p>
         <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-4">
           {LANGUAGES.map((l) => (
             <button key={l.code} onClick={() => setReplyLanguage(l.code)}

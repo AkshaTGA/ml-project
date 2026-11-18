@@ -26,7 +26,7 @@ from .config import (
     SARVAM_API_KEY,
 )
 from .embeddings import LocalEmbeddings
-from .routers import chat, dashboard, files, models, profile, threads, voice
+from .routers import chat, dashboard, files, models, profile, runs, threads, voice
 
 logging.basicConfig(level=logging.INFO)
 
@@ -50,7 +50,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(title="AgriAssist API", version="0.2.0", lifespan=lifespan)
 app.add_middleware(CORSMiddleware, allow_origins=CORS_ORIGINS, allow_methods=["*"], allow_headers=["*"])
 
-for module in (chat, threads, files, models, profile, voice, dashboard):
+for module in (chat, threads, files, models, profile, voice, dashboard, runs):
     app.include_router(module.router, prefix="/api")
 
 

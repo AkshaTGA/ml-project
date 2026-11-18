@@ -26,8 +26,6 @@ async def update_profile(fields: dict[str, Any], user_id: str = Depends(current_
 @router.post("/onboarding")
 async def onboarding(fields: dict[str, Any], user_id: str = Depends(current_user)):
     profile = await profiles.upsert(user_id, fields, onboarded=True)
-    if goals := (fields.get("goals") or "").strip():
-        await memory.add_memory(user_id, f"Goals and challenges shared at signup: {goals}", category="onboarding")
     return profile
 
 
@@ -37,17 +35,18 @@ async def onboarding(fields: dict[str, Any], user_id: str = Depends(current_user
 async def get_memory(user_id: str = Depends(current_user)):
     profile = await profiles.get(user_id)
     facts = await memory.list_memories(user_id)
+    candidates = await memory.list_candidates(user_id)
     threads = await db.fetch(
         "SELECT id, title, summary, updated_at FROM threads WHERE user_id = %s AND summary <> '' "
         "ORDER BY updated_at DESC LIMIT 50", user_id)
-    return {"profile": profile, "facts": facts, "threads": threads}
+    return {"profile": profile, "facts": facts, "candidates": candidates, "threads": threads}
 
 
 class MemoryEdit(BaseModel):
     text: Any
 
 
-Kind = Literal["fact", "thread", "profile"]
+Kind = Literal["fact", "thread", "profile", "candidate"]
 
 
 @router.patch("/memory/{kind}/{item_id}")
@@ -71,6 +70,8 @@ async def edit_memory(kind: Kind, item_id: str, body: MemoryEdit, user_id: str =
 async def forget(kind: Kind, item_id: str, user_id: str = Depends(current_user)):
     if kind == "fact":
         await memory.delete_memory(user_id, item_id)
+    elif kind == "candidate":
+        await memory.delete_candidate(user_id, item_id)
     elif kind == "thread":
         if not await memory.owns_thread(user_id, item_id):
             raise HTTPException(404, "Conversation not found")

@@ -1,4 +1,6 @@
 import { createContext, useContext, useMemo, useState } from 'react'
+import { CHROME } from './chrome'
+import { MORE } from './chromeMore'
 
 // Languages supported by voice (Sarvam) and the agent. `ui` marks those with translated UI labels.
 export const LANGUAGES = [
@@ -6,13 +8,13 @@ export const LANGUAGES = [
   { code: 'hi-IN', name: 'Hindi', native: 'हिन्दी', ui: true },
   { code: 'mr-IN', name: 'Marathi', native: 'मराठी', ui: true },
   { code: 'pa-IN', name: 'Punjabi', native: 'ਪੰਜਾਬੀ', ui: true },
-  { code: 'gu-IN', name: 'Gujarati', native: 'ગુજરાતી' },
-  { code: 'bn-IN', name: 'Bengali', native: 'বাংলা' },
+  { code: 'gu-IN', name: 'Gujarati', native: 'ગુજરાતી', ui: true },
+  { code: 'bn-IN', name: 'Bengali', native: 'বাংলা', ui: true },
   { code: 'ta-IN', name: 'Tamil', native: 'தமிழ்', ui: true },
   { code: 'te-IN', name: 'Telugu', native: 'తెలుగు', ui: true },
-  { code: 'kn-IN', name: 'Kannada', native: 'ಕನ್ನಡ' },
-  { code: 'ml-IN', name: 'Malayalam', native: 'മലയാളം' },
-  { code: 'od-IN', name: 'Odia', native: 'ଓଡ଼ିଆ' },
+  { code: 'kn-IN', name: 'Kannada', native: 'ಕನ್ನಡ', ui: true },
+  { code: 'ml-IN', name: 'Malayalam', native: 'മലയാളം', ui: true },
+  { code: 'od-IN', name: 'Odia', native: 'ଓଡ଼ିଆ', ui: true },
 ]
 
 const STRINGS = {
@@ -41,6 +43,11 @@ const STRINGS = {
     checkingFarm: 'Looking at your farm…', checkingChats: 'Looking at past chats…', updatingFarm: 'Updating your farm…',
     writingAnswer: 'Writing your answer…', makingVisual: 'Making a visual for you…', working: 'One moment…',
     onYourFarm: 'On your farm', addYourCrop: 'Add a crop in My Farm to see it here.', toolsHelp: 'Try a tool on your own photo or numbers, then ask what to do.',
+    reply: 'Reply', recentChecks: 'Past runs', noChecks: 'Runs of this tool stay here, including when you send a photo in chat.',
+    fromChat: 'From chat', clearHistory: 'Clear history', deleteRun: 'Delete',
+    deleteRunConfirm: 'Delete this run?', clearRunsConfirm: 'Delete every saved run of this tool?',
+    viewInChat: 'View in chat', explainResult: 'Explain this in simple words and tell me what I should do.',
+    aboutThis: 'About this.',
     voiceMode: 'Voice conversation', listening: 'Listening…', thinking: 'Thinking…', speaking: 'Speaking…',
     tapToTalk: 'Tap the orb to talk', worked: 'Worked for', tools: 'tools', memories: 'memories',
     remembered: 'Remembered', undo: 'Undo', copy: 'Copy', listen: 'Listen', noAlerts: 'No alerts. Good farming weather.',
@@ -302,7 +309,12 @@ export function I18nProvider({ children }) {
         setLangState(code)
         try { localStorage.setItem(KEY, code) } catch { /* storage unavailable */ }
       },
-      t: (key) => table[key] ?? STEP_STRINGS[lang]?.[key] ?? STRINGS['en-IN'][key] ?? STEP_STRINGS['en-IN'][key] ?? key,
+      t: (key, vars) => {
+        const raw = MORE[lang]?.[key] ?? CHROME[lang]?.[key] ?? table[key] ?? STEP_STRINGS[lang]?.[key]
+          ?? MORE['en-IN']?.[key] ?? CHROME['en-IN']?.[key] ?? STRINGS['en-IN'][key] ?? STEP_STRINGS['en-IN'][key] ?? key
+        if (!vars) return raw
+        return raw.replace(/\{(\w+)\}/g, (_, name) => vars[name] ?? '')
+      },
     }
   }, [lang])
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>

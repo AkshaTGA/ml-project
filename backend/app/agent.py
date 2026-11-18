@@ -4,6 +4,7 @@ Memory reflection runs after the answer, in the background (see routers/chat.py)
 """
 from __future__ import annotations
 
+import json
 from datetime import date
 from typing import Any
 
@@ -36,14 +37,23 @@ Prefer short answers with markdown (bold key numbers, short lists, small tables)
 - Personalise using the profile, memories and past conversations below. Never ask for information you \
 already have.
 - Use tools instead of guessing. Call independent tools in parallel (e.g. weather + mandi prices).
-  * Photo of leaf/plant/fruit -> diagnose_plant_disease. Photo of pasture/grass -> predict_pasture_biomass, \
-then offer estimate_grazing_days for the user's herd.
+  * Photo of leaf/plant/fruit -> diagnose_plant_disease. Photo of pasture/grass -> predict_pasture_biomass. \
+That tool runs one XGBoost model on a shared ResNet embedding. The target argument must be the measurement \
+the user asked for: Dry_Clover_g, Dry_Dead_g, Dry_Green_g, Dry_Total_g, or GDM_g. If they did not choose, \
+ask before calling it. The result includes a Grad-CAM image of that embedding; mention what it highlights. \
+After Dry_Total_g or GDM_g, offer estimate_grazing_days for the user's herd.
   * What to grow -> recommend_crop (fill climate with get_weather). Sick animal -> assess_livestock_health.
   * Weather-sensitive advice (sowing, spraying, irrigation, harvest) -> get_weather first.
   * Prices -> get_mandi_prices. Schemes, news, anything current or uncertain -> web_search and cite URLs.
-  * When the user shares a lasting fact (new animal, field size, problem, preference) -> remember_fact; \
-if their farm details change -> update_farm_profile. Earlier chats -> search_past_conversations.
+  * remember_fact only when the user asks you to remember something, or states a standing preference \
+or constraint that is not already in the profile or the long-term summary. That request is enough to keep it. \
+Do not remember weather, prices, today's problem, or a tool result. \
+If their saved farm details change (land, crops, animals, location, soil) -> update_farm_profile. \
+Earlier chats -> search_past_conversations.
 - Results with "mode": "mock" are sample values from a model that is not connected yet: say so briefly.
+- A user message may include <attached_context>. That block is a saved check or an earlier message \
+they pointed at, not words they typed. Answer the short question using it. Do not dump it back as raw JSON. \
+Photos from that check are attached for you to see; the user only sees a small card, so describe what you see.
 - Safety first: for serious animal illness, pesticide handling or human health, also advise a local \
 veterinarian / KVK / agriculture officer. Never recommend banned pesticides. Never invent prices or schemes.
 - Uploaded files appear in the user's message with a file_id. Look at images yourself too."""
@@ -62,13 +72,15 @@ SIMPLE_PROMPT = """This person wants a simple answer they can use in the field.
 
 
 # Generative UI. Rendered by frontend/src/components/chat/UIBlocks.jsx; keep the two in sync.
-UI_PROMPT = """Visual answers: besides markdown you can add interactive visuals by writing a fenced code block \
-with the language `ui` containing ONE JSON object (or a JSON array of objects). You decide when to use them: \
-reach for one whenever numbers, a plan, options or a calculation would be easier to grasp visually than as text \
-(most practical answers have one), but skip them for greetings, quick facts and short follow-ups. Usually 1-2 per \
-answer, never more than 3, each with a short text explanation, and never the same information twice. \
-The JSON must be valid (double quotes, no comments, no trailing commas). Write all labels in the user's language. \
-Only use numbers you know (from tools, the profile or standard agronomy); never invent prices or measurements.
+UI_PROMPT = """Visual answers: besides markdown you can add interactive visuals. Each visual is a fenced block \
+whose FIRST LINE is exactly ```ui and whose LAST LINE is exactly ```. Never use ```json, ```javascript, or a fence \
+with no language: those will not become cards. Inside the fence put ONE JSON object (or a JSON array of objects). \
+You decide when to use them: reach for one whenever numbers, a plan, options or a calculation would be easier to \
+grasp visually than as text (most practical answers have one), but skip them for greetings, quick facts and short \
+follow-ups. Usually 1-2 per answer, never more than 3, each with a short text explanation, and never the same \
+information twice. The JSON must be valid (double quotes, no comments, no trailing commas). Write all labels in \
+the user's language. Only use numbers you know (from tools, the profile or standard agronomy); never invent prices \
+or measurements.
 
 Available blocks:
 - chart: trends, comparisons, shares. kind = bar | line | area | pie | donut. `x` is the label key.
@@ -89,9 +101,14 @@ formulas over input keys using + - * / ^ ( ) and round/ceil/floor/min/max. Pre-f
   {"type":"gauge","label":"Soil pH","value":8.1,"min":4,"max":10,"zones":[{"to":5.5,"tone":"bad","label":"Acidic"},{"to":7.5,"tone":"good","label":"Ideal"},{"to":10,"tone":"bad","label":"Alkaline"}]}
 - choices: ask ONE clarifying question with tappable answers instead of a long text question. Put it last.
   {"type":"choices","question":"Which crop stage?","options":["Seedling","Flowering","Grain filling"]}
+- links: sources and further reading. Never paste a bare URL, and never put a raw address in a bullet list. \
+Give every link a short human title.
+  {"type":"links","title":"Sources","items":[{"title":"Okra pest guide","url":"https://example.gov/okra.pdf"}]}
+A single link inside a sentence may instead be markdown with a short title, like [Okra pest guide](https://example.gov/okra.pdf).
 
 Good fits: weather or price data -> chart or stats; a plan -> steps or schedule; doses that scale with area or herd \
-size -> calculator; choosing between methods, crops or products -> compare; safety -> callout; missing info -> choices."""
+size -> calculator; choosing between methods, crops or products -> compare; safety -> callout; missing info -> choices; \
+sources -> links."""
 
 class AgentState(MessagesState):
     context: dict[str, Any]
@@ -107,7 +124,8 @@ def system_prompt(context: dict, voice: bool, verbose: bool = False) -> str:
     parts.append(f"Today is {date.today().isoformat()}.")
     parts.append("User's farm profile:\n" + profiles.describe(profile))
     if context.get("memories"):
-        parts.append("Things you remember about the user:\n" + "\n".join(f"- {m['text']}" for m in context["memories"]))
+        parts.append("Long-term memory, a summary of what has proved lasting. Do not treat one chat as part of this:\n"
+                     + context["memories"][0]["text"])
     if context.get("recent_threads"):
         parts.append("The user's recent other conversations:\n" + "\n".join(
             f"- {t['title']}: {t['summary']}" for t in context["recent_threads"]))
@@ -126,12 +144,40 @@ def trim_history(messages: list) -> list:
 
 
 async def report_tool_result(request, execute):
-    """Streams each tool's result the moment it finishes, even while parallel tools are still running."""
+    """Streams each tool's result the moment it finishes, even while parallel tools are still running.
+
+    Results worth asking about later are stored, and the stored id is added to the tool payload.
+    """
+    from . import runs
+
     result = await execute(request)
     content = getattr(result, "content", None)
-    if content is not None:
-        get_stream_writer()({"type": "tool_end", "id": request.tool_call["id"], "name": request.tool_call["name"],
-                             "output": content})
+    if content is None:
+        return result
+    configurable = {}
+    runtime = getattr(request, "runtime", None)
+    if runtime is not None and getattr(runtime, "config", None):
+        configurable = runtime.config.get("configurable") or {}
+    user_id = configurable.get("user_id")
+    if user_id and isinstance(content, str):
+        try:
+            data = json.loads(content)
+        except json.JSONDecodeError:
+            data = None
+        if isinstance(data, dict):
+            args = request.tool_call.get("args") or {}
+            image_id = args.get("file_id") or args.get("image")
+            inputs = {key: value for key, value in args.items() if key not in {"file_id", "image"}}
+            saved = await runs.save_run(
+                user_id, request.tool_call["name"], data, inputs=inputs, image_id=image_id,
+                thread_id=configurable.get("thread_id"), message_id=request.tool_call["id"],
+            )
+            if saved:
+                data["run_id"] = saved["id"]
+                content = json.dumps(data, ensure_ascii=False)
+                result.content = content
+    get_stream_writer()({"type": "tool_end", "id": request.tool_call["id"], "name": request.tool_call["name"],
+                         "output": content})
     return result
 
 
@@ -148,7 +194,8 @@ def build_graph(checkpointer, store, llm=None):
         latest = state["messages"][-1]
         query = latest.additional_kwargs.get("display_text") or (
             latest.content if isinstance(latest.content, str) else "")
-        context = await memory.load_context(configurable["user_id"], configurable["thread_id"], query)
+        pointed = " ".join(item.get("preview") or "" for item in latest.additional_kwargs.get("context") or [])
+        context = await memory.load_context(configurable["user_id"], configurable["thread_id"], f"{query} {pointed}".strip())
         return {"context": context}
 
     async def agent(state: AgentState, config: RunnableConfig):
@@ -168,17 +215,37 @@ def build_graph(checkpointer, store, llm=None):
     return graph.compile(checkpointer=checkpointer, store=store)
 
 
-async def build_user_message(user_id: str, text: str, attachment_ids: list[str]) -> HumanMessage:
-    """Turn the user's text plus uploaded files into a (multimodal) message."""
+async def build_user_message(user_id: str, text: str, attachment_ids: list[str],
+                             context_cards: list[dict] | None = None, context_text: str = "",
+                             extra_images: list[dict] | None = None) -> HumanMessage:
+    """Turn the user's text plus uploaded files into a (multimodal) message.
+
+    ``context_text`` and ``extra_images`` go to the model only. The bubble shows ``text``
+    and ``context_cards``, not those photos as extra attachments.
+    """
     notes, images = [], []
-    for meta in await files.get_many(user_id, attachment_ids):
+    labeled = {item["id"]: item.get("label") for item in (extra_images or []) if item.get("id")}
+    ordered = list(attachment_ids)
+    for file_id in labeled:
+        if file_id not in ordered:
+            ordered.append(file_id)
+    visible = set(attachment_ids)
+    for meta in await files.get_many(user_id, ordered):
         if meta["kind"] == "image":
-            notes.append(f"[Attached image '{meta['name']}', file_id={meta['id']}]")
+            label = labeled.get(meta["id"]) or f"Attached image '{meta['name']}'"
+            notes.append(f"[{label}, file_id={meta['id']}]")
             if LLM_VISION:
                 images.append({"type": "image_url", "image_url": {"url": await files.image_data_url(meta)}})
-        else:
+        elif meta["id"] in visible:
             notes.append(f"[Attached document '{meta['name']}', file_id={meta['id']}]\n"
                          f"<document>\n{await files.extract_text(meta)}\n</document>")
-    body = "\n\n".join(filter(None, [text.strip(), *notes])) or "(no text)"
+    parts = [text.strip(), *notes]
+    if context_text:
+        parts.append(f"<attached_context>\n{context_text}\n</attached_context>")
+    body = "\n\n".join(filter(None, parts)) or "(no text)"
     content = body if not images else [{"type": "text", "text": body}, *images]
-    return HumanMessage(content=content, additional_kwargs={"display_text": text, "attachments": attachment_ids})
+    return HumanMessage(content=content, additional_kwargs={
+        "display_text": text,
+        "attachments": attachment_ids,
+        "context": context_cards or [],
+    })

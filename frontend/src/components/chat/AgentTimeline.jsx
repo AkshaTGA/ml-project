@@ -7,6 +7,7 @@ import {
 import { useI18n } from '../../lib/i18n'
 import { useVerboseSteps } from '../../lib/prefs'
 import { parseOutput, Result } from '../Results'
+import { UI_TYPES } from './UIBlocks'
 
 const SIMPLE_STEP = {
   predict_pasture_biomass: 'checkingGrass',
@@ -25,7 +26,7 @@ const SIMPLE_STEP = {
 
 // `label` and `active` are translation keys. `args` builds the short glimpse.
 export const TOOL_INFO = {
-  predict_pasture_biomass: { icon: Sprout, label: 'toolPasture', active: 'toolPastureOn', args: (_a, t) => t('yourPhoto') },
+  predict_pasture_biomass: { icon: Sprout, label: 'toolPasture', active: 'toolPastureOn', args: (a, t) => [a.target, t('yourPhoto')].filter(Boolean).join(' · ') },
   diagnose_plant_disease: { icon: Stethoscope, label: 'toolLeaf', active: 'toolLeafOn', args: (a, t) => a.crop || t('yourPhoto') },
   recommend_crop: { icon: Wheat, label: 'toolCrop', active: 'toolCropOn', args: (a) => [`N${a.nitrogen}`, `P${a.phosphorus}`, `K${a.potassium}`, a.ph != null && `pH ${a.ph}`].filter(Boolean).join(' ') },
   assess_livestock_health: { icon: PawPrint, label: 'toolAnimal', active: 'toolAnimalOn', args: (a) => [a.species, a.body_temperature != null && `${a.body_temperature}°C`].filter(Boolean).join(' · ') },
@@ -50,12 +51,24 @@ function Elapsed({ from, to }) {
   return <span className="tabular-nums text-[11px] text-muted">{(((to || now) - from) / 1000).toFixed(1)}s</span>
 }
 
-function StepIcon({ icon: Icon, state }) {
-  const tone = state === 'error' ? 'bg-danger-soft text-danger' : state === 'done' ? 'bg-brand-soft text-brand' : 'bg-gold-soft text-gold'
+function StepIcon({ icon: Icon, state, kind = 'tool' }) {
+  const tile = kind === 'thought'
+    ? 'bg-sand text-sand-ink ring-1 ring-sand-ink/10'
+    : state === 'error'
+      ? 'bg-danger-soft text-danger ring-1 ring-danger/15'
+      : state === 'active'
+        ? 'bg-gold-soft text-gold ring-2 ring-gold/25'
+        : 'bg-white text-brand ring-1 ring-brand/15 shadow-sm'
+  const pip = state === 'done' ? 'bg-brand' : state === 'error' ? 'bg-danger' : null
   return (
-    <span className={`relative z-10 grid size-7 shrink-0 place-items-center rounded-full ${tone}`}>
-      {state === 'active' && <span className="absolute inset-0 animate-ping rounded-full bg-gold/30" />}
-      {state === 'done' ? <Check size={14} strokeWidth={3} /> : state === 'error' ? <X size={14} /> : <Icon size={14} />}
+    <span className={`relative z-10 grid size-8 shrink-0 place-items-center rounded-xl ${tile}`}>
+      {state === 'active' && <span className="absolute inset-0 animate-ping rounded-xl bg-gold/20" />}
+      <Icon size={15} />
+      {pip && kind !== 'thought' && (
+        <span className={`absolute -bottom-1 -right-1 grid size-3.5 place-items-center rounded-full text-white ring-2 ring-white ${pip}`}>
+          {state === 'done' ? <Check size={8} strokeWidth={3.5} /> : <X size={8} strokeWidth={3} />}
+        </span>
+      )}
     </span>
   )
 }
@@ -77,6 +90,7 @@ function glimpseOf(step, t) {
   const data = step.output == null ? null : parseOutput(step.output)
   if (data && typeof data === 'object' && !Array.isArray(data) && data.error) return { failed: true, text: t('couldNotFinish') }
   if (step.name === 'get_weather' && data?.current?.temperature_2m != null) return { text: `${Math.round(data.current.temperature_2m)}°C` }
+  if (step.name === 'predict_pasture_biomass' && data?.prediction != null) return { text: `${data.label || data.target || 'Biomass'} ${Number(data.prediction).toFixed(1)} g` }
   if (step.name === 'diagnose_plant_disease' && data?.disease && !data.healthy) return { text: data.disease }
   if (step.name === 'get_mandi_prices' && data && !data.prices && data.web_results) return { text: t('fromWeb') }
   const counted = {
@@ -90,22 +104,26 @@ function glimpseOf(step, t) {
   return { text: '' }
 }
 
-function Row({ icon, state, label, detail, right, children, onClick }) {
+function Row({ icon, state, label, detail, right, children, onClick, focusId, kind = 'tool' }) {
+  const wash = state === 'active' ? 'bg-gold-soft/80' : state === 'error' ? 'bg-danger-soft/60' : 'hover:bg-surface-2/70'
   const head = (
     <>
-      <span className={`shrink-0 font-semibold ${state === 'active' ? 'text-shimmer' : ''}`}>{label}</span>
-      {detail && <span className="min-w-0 flex-1 truncate text-xs text-muted">{detail}</span>}
-      {right && <span className="ml-auto shrink-0">{right}</span>}
+      <span className="min-w-0 flex-1">
+        <span className={`block text-[13px] font-semibold leading-tight ${state === 'active' ? 'text-shimmer' : state === 'error' ? 'text-danger' : 'text-ink'}`}>{label}</span>
+        {detail && <span className="mt-0.5 block truncate text-xs leading-snug text-muted">{detail}</span>}
+      </span>
+      {right && <span className="flex shrink-0 items-center gap-1 pt-0.5">{right}</span>}
     </>
   )
   return (
-    <motion.div initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="flex gap-3">
-      <StepIcon icon={icon} state={state} />
-      <div className="min-w-0 flex-1 py-1 text-sm">
+    <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} data-focus-id={focusId || undefined}
+      className={`relative flex items-start gap-3 rounded-2xl px-1.5 py-1.5 transition ${wash}`}>
+      <StepIcon icon={icon} state={state} kind={kind} />
+      <div className="min-w-0 flex-1 pt-0.5 text-sm">
         {onClick ? (
-          <button type="button" onClick={onClick} className="flex w-full items-center gap-2 text-left">{head}</button>
+          <button type="button" onClick={onClick} className="flex w-full items-start gap-2 text-left">{head}</button>
         ) : (
-          <div className="flex items-center gap-2">{head}</div>
+          <div className="flex items-start gap-2">{head}</div>
         )}
         {children}
       </div>
@@ -114,15 +132,19 @@ function Row({ icon, state, label, detail, right, children, onClick }) {
 }
 
 /** Closed row shows a short glimpse. The chevron opens the rest, uncut. */
-function StepBlock({ icon, state, label, glimpse, extra, right }) {
+function StepBlock({ icon, state, label, glimpse, extra, right, focusId, kind }) {
   const [open, setOpen] = useState(false)
   return (
-    <Row icon={icon} state={state} label={label} detail={glimpse}
+    <Row icon={icon} state={state} label={label} detail={glimpse} focusId={focusId} kind={kind}
       onClick={extra ? () => setOpen((v) => !v) : undefined}
       right={(
-        <span className="flex items-center gap-1.5">
+        <span className="flex items-center gap-1">
           {right}
-          {extra ? <ChevronDown size={14} className={`text-muted transition ${open ? 'rotate-180' : ''}`} /> : null}
+          {extra ? (
+            <span className={`grid size-5 place-items-center rounded-full bg-surface-2 text-muted transition ${open ? 'rotate-180' : ''}`}>
+              <ChevronDown size={12} />
+            </span>
+          ) : null}
         </span>
       )}>
       {open && extra}
@@ -141,11 +163,14 @@ const VISUAL_LABEL = {
 }
 
 export function visualInProgress(content) {
-  const open = (content.match(/```ui/g) || []).length
-  const fences = (content.match(/```/g) || []).length
-  if (!open || fences % 2 === 0) return null
-  const type = content.slice(content.lastIndexOf('```ui')).match(/"type"\s*:\s*"(\w+)"/)?.[1]
-  return VISUAL_LABEL[type] || 'visualGeneric'
+  const chunks = content.split('```')
+  if (chunks.length % 2 === 1) return null
+  const inside = chunks.at(-1) || ''
+  const lang = (inside.match(/^[a-zA-Z]*/)?.[0] || '').toLowerCase()
+  if (lang && !['ui', 'json', 'jsonc', 'javascript', 'js'].includes(lang)) return null
+  const type = inside.match(/"type"\s*:\s*"(\w+)"/)?.[1]
+  if (lang === 'ui' || (type && UI_TYPES.has(type))) return VISUAL_LABEL[type] || 'visualGeneric'
+  return null
 }
 
 function firstLine(text) {
@@ -159,9 +184,9 @@ function Steps({ message }) {
   const lastIndex = message.steps.length - 1
   const visual = streaming && visualInProgress(message.content)
   return (
-    <div className="relative">
-      <div className="absolute bottom-3 left-[13px] top-3 w-px bg-line" />
-      <div className="space-y-0.5">
+    <div className="rounded-[22px] border border-line/80 bg-gradient-to-b from-white to-surface-2/40 p-1.5 shadow-sm">
+      <div className="relative space-y-0.5">
+      <div className="pointer-events-none absolute bottom-4 left-[22px] top-4 w-px bg-gradient-to-b from-brand/35 via-line to-transparent" />
         {message.steps.map((step, i) => {
           if (step.type === 'context') {
             const n = step.count ?? step.memories?.length ?? 0
@@ -171,7 +196,7 @@ function Steps({ message }) {
             ].filter(Boolean).join(' · ')
             const memories = step.memories || []
             return (
-              <StepBlock key={i} icon={Brain} state={step.status}
+              <StepBlock key={i} icon={Sprout} state={step.status} kind="tool"
                 label={t(step.status === 'active' ? 'stepFarmActive' : 'stepFarm')} glimpse={glimpse}
                 extra={memories.length ? (
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -184,7 +209,7 @@ function Steps({ message }) {
             const text = (step.content || '').trim()
             const active = step.type === 'thinking' && streaming && i === lastIndex
             return (
-              <StepBlock key={i} icon={step.type === 'note' ? Lightbulb : Brain} state={active ? 'active' : 'done'}
+              <StepBlock key={i} icon={step.type === 'note' ? Lightbulb : Brain} kind="thought" state={active ? 'active' : 'done'}
                 label={t(step.type === 'note' ? 'stepPlan' : active ? 'thinkingNow' : 'thoughtDone')}
                 glimpse={firstLine(text)}
                 extra={text ? <FullText>{text}</FullText> : null} />
@@ -202,7 +227,7 @@ function Steps({ message }) {
             </div>
           ) : (argText ? <FullText>{argText}</FullText> : null)
           return (
-            <StepBlock key={step.id || i} icon={info.icon}
+            <StepBlock key={step.id || i} focusId={step.id} icon={info.icon}
               state={running ? 'active' : result?.failed ? 'error' : 'done'}
               label={t(running ? info.active : info.label)}
               glimpse={[argText, result?.text].filter(Boolean).join(' · ')}
@@ -222,12 +247,13 @@ function Steps({ message }) {
 const SHOW_RESULT = new Set(['predict_pasture_biomass', 'diagnose_plant_disease', 'recommend_crop', 'assess_livestock_health', 'estimate_grazing_days', 'get_mandi_prices', 'get_weather'])
 
 function ResultCards({ message }) {
-  const tools = message.steps.filter((s) => s.type === 'tool')
-  return tools.filter((s) => SHOW_RESULT.has(s.name) && s.output != null && s.name !== 'get_weather').map((s) => {
+  const tools = message.steps.filter((s) => s.type === 'tool' && s.output != null)
+  return tools.map((s) => {
     const data = parseOutput(s.output)
-    if (data && typeof data === 'object' && data.error) return null
+    const shown = SHOW_RESULT.has(s.name) && s.name !== 'get_weather' && !(data && typeof data === 'object' && data.error)
+    if (!shown) return <span key={s.id} data-focus-id={s.id} />
     return (
-      <div key={s.id} className="rounded-3xl bg-surface p-3.5 shadow-sm">
+      <div key={s.id} data-focus-id={s.id} className="rounded-3xl bg-surface p-3.5 shadow-sm">
         <Result kind={s.name} data={data} />
       </div>
     )
@@ -288,7 +314,7 @@ export default function AgentTimeline({ message }) {
         </div>
       ) : (
         <button onClick={() => setExpanded(true)}
-          className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-3 py-1.5 text-xs font-medium text-muted shadow-sm transition hover:border-brand hover:text-ink">
+          className="inline-flex items-center gap-2 rounded-full border border-line bg-white px-3 py-1.5 text-xs font-medium text-muted shadow-sm transition hover:border-brand hover:text-ink">
           <Sprout size={13} className="text-brand" />
           {seconds != null && <span>{t('worked')} {seconds.toFixed(1)}s</span>}
           {tools.length > 0 && <span>· {countPhrase(t, tools.length, 'oneStep', 'manySteps')}</span>}

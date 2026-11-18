@@ -5,13 +5,23 @@ MODELS = [
     {
         "id": "biomass",
         "name": "Pasture Biomass Estimator",
-        "description": "Estimates dry biomass (clover, dead, green, total, GDM) from a top-down "
-                       "photo of a pasture quadrat. Our main model: DINO ViT with vegetation-index "
-                       "cross-attention.",
+        "description": "Estimates one dry-biomass measurement from a top-down pasture photo. "
+                       "A shared ResNet-50 embeds the photo; you choose which of the five trained "
+                       "XGBoost models to run. A Grad-CAM map shows which parts of the photo drove that embedding.",
         "input_type": "image",
         "fields": [
             {"name": "image", "label": "Pasture photo", "type": "image",
              "help": "Top-down photo of the pasture sample area."},
+            {"name": "target", "label": "What to predict", "type": "select", "required": True, "wide": True,
+             "default": "",
+             "help": "Each choice is a separate model. They share one ResNet backbone.",
+             "options": [
+                 {"value": "Dry_Clover_g", "label": "Clover"},
+                 {"value": "Dry_Dead_g", "label": "Dead material"},
+                 {"value": "Dry_Green_g", "label": "Green vegetation"},
+                 {"value": "Dry_Total_g", "label": "Total dry matter"},
+                 {"value": "GDM_g", "label": "Green dry matter (GDM)"},
+             ]},
         ],
     },
     {

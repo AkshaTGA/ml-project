@@ -61,6 +61,9 @@ export function makeApi(getToken) {
     forget: (kind, id) => call(`/api/memory/${kind}/${encodeURIComponent(id)}`, { method: 'DELETE' }),
     clearMemory: () => call('/api/memory', { method: 'DELETE' }),
     models: () => call('/api/models'),
+    runs: () => call('/api/runs'),
+    deleteRun: (id) => call(`/api/runs/${id}`, { method: 'DELETE' }),
+    clearRuns: (tool) => call(`/api/runs?tool=${encodeURIComponent(tool)}`, { method: 'DELETE' }),
     runModel: (id, inputs) => call(`/api/models/${id}/predict`, { method: 'POST', json: { inputs } }),
     upload(fileList) {
       const form = new FormData()
@@ -75,10 +78,13 @@ export function makeApi(getToken) {
       return call('/api/voice/stt', { method: 'POST', form })
     },
     tts: (text, opts = {}) => call('/api/voice/tts', { method: 'POST', json: { text, ...opts } }),
-    async chat({ threadId, message, attachments, voice, verbose = false, signal, onEvent }) {
+    async chat({ threadId, message, attachments, context = [], voice, verbose = false, signal, onEvent }) {
       const res = await call('/api/chat', {
         method: 'POST', signal, raw: true,
-        json: { thread_id: threadId, message, attachments, voice: !!voice, verbose: !!verbose },
+        json: {
+          thread_id: threadId, message, attachments, voice: !!voice, verbose: !!verbose,
+          context: context.map(({ type, id, thread_id }) => ({ type, id, thread_id: thread_id || null })),
+        },
       })
       await readEvents(res, onEvent)
     },

@@ -1,0 +1,11 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+python-multipart>=0.0.9
+numpy>=1.26
+scipy>=1.11
+Pillow>=10
+httpx>=0.27
+
+# Install torch, torchvision, and xgboost with install.sh.
+# A plain `pip install torch` may pull a multi-gigabyte CUDA build.
+# xgboost is installed with --no-deps so pip does not also fetch nvidia-nccl.

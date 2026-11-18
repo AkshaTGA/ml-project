@@ -10,22 +10,22 @@ import { LANGUAGES, useI18n } from '../lib/i18n'
 import { useToast } from '../lib/toast'
 
 const ROLES = [
-  { id: 'farmer', emoji: '🌾', label: 'Farmer', text: 'I grow crops' },
-  { id: 'herder', emoji: '🐄', label: 'Herder / dairy', text: 'I raise animals' },
-  { id: 'mixed', emoji: '🚜', label: 'Both', text: 'Crops and animals' },
-  { id: 'agribusiness', emoji: '🏪', label: 'Agri business', text: 'Inputs, trading, FPO' },
-  { id: 'student', emoji: '🎓', label: 'Student / researcher', text: 'Learning and research' },
+  { id: 'farmer', emoji: '🌾', label: 'roleFarmer', text: 'roleFarmerHint' },
+  { id: 'herder', emoji: '🐄', label: 'roleHerder', text: 'roleHerderHint' },
+  { id: 'mixed', emoji: '🚜', label: 'roleMixed', text: 'roleMixedHint' },
+  { id: 'agribusiness', emoji: '🏪', label: 'roleBusiness', text: 'roleBusinessHint' },
+  { id: 'student', emoji: '🎓', label: 'roleStudent', text: 'roleStudentHint' },
 ]
 const CROPS = [
-  ['Wheat', '🌾'], ['Rice', '🍚'], ['Maize', '🌽'], ['Cotton', '☁️'], ['Sugarcane', '🎋'], ['Soybean', '🫘'],
-  ['Mustard', '🌼'], ['Chickpea', '🧆'], ['Onion', '🧅'], ['Tomato', '🍅'], ['Potato', '🥔'], ['Banana', '🍌'],
-  ['Mango', '🥭'], ['Vegetables', '🥬'], ['Millets', '🌿'], ['Groundnut', '🥜'], ['Pasture / fodder', '🌱'], ['Fruits', '🍇'],
+  ['Wheat', '🌾', 'cropWheat'], ['Rice', '🍚', 'cropRice'], ['Maize', '🌽', 'cropMaize'], ['Cotton', '☁️', 'cropCotton'], ['Sugarcane', '🎋', 'cropSugarcane'], ['Soybean', '🫘', 'cropSoybean'],
+  ['Mustard', '🌼', 'cropMustard'], ['Chickpea', '🧆', 'cropChickpea'], ['Onion', '🧅', 'cropOnion'], ['Tomato', '🍅', 'cropTomato'], ['Potato', '🥔', 'cropPotato'], ['Banana', '🍌', 'cropBanana'],
+  ['Mango', '🥭', 'cropMango'], ['Vegetables', '🥬', 'cropVegetables'], ['Millets', '🌿', 'cropMillets'], ['Groundnut', '🥜', 'cropGroundnut'], ['Pasture / fodder', '🌱', 'cropPasture'], ['Fruits', '🍇', 'cropFruits'],
 ]
-const ANIMALS = [['cows', '🐄'], ['buffaloes', '🐃'], ['goats', '🐐'], ['sheep', '🐑'], ['poultry', '🐔']]
-const IRRIGATION = ['Rainfed', 'Canal', 'Borewell / tubewell', 'Drip', 'Sprinkler', 'Pond / tank']
-const SOILS = ['Alluvial', 'Black (cotton)', 'Red', 'Laterite', 'Sandy', 'Clay', 'Loamy', "Don't know"]
-const GOALS = ['Increase yield', 'Reduce input costs', 'Better market prices', 'Animal health', 'Organic farming', 'Save water', 'Pest & disease control']
-const STEPS = ['Language', 'About you', 'Location', 'Your farm', 'Goals']
+const ANIMALS = [['cows', '🐄', 'animalCows'], ['buffaloes', '🐃', 'animalBuffaloes'], ['goats', '🐐', 'animalGoats'], ['sheep', '🐑', 'animalSheep'], ['poultry', '🐔', 'animalPoultry']]
+const IRRIGATION = [['Rainfed', 'irrRainfed'], ['Canal', 'irrCanal'], ['Borewell / tubewell', 'irrBorewell'], ['Drip', 'irrDrip'], ['Sprinkler', 'irrSprinkler'], ['Pond / tank', 'irrPond']]
+const SOILS = [['Alluvial', 'soilAlluvial'], ['Black (cotton)', 'soilBlack'], ['Red', 'soilRed'], ['Laterite', 'soilLaterite'], ['Sandy', 'soilSandy'], ['Clay', 'soilClay'], ['Loamy', 'soilLoamy'], ["Don't know", 'soilUnknown']]
+const GOALS = [['Increase yield', 'goalYield'], ['Reduce input costs', 'goalCost'], ['Better market prices', 'goalMarket'], ['Animal health', 'goalAnimal'], ['Organic farming', 'goalOrganic'], ['Save water', 'goalWater'], ['Pest & disease control', 'goalPest']]
+const STEP_KEYS = ['stepLanguage', 'stepAbout', 'stepLocation', 'stepFarm', 'stepGoals']
 
 function Chip({ active, onClick, children }) {
   return (
@@ -37,6 +37,7 @@ function Chip({ active, onClick, children }) {
 }
 
 function LocationSearch({ value, onPick }) {
+  const { t } = useI18n()
   const [query, setQuery] = useState(value?.location_name || '')
   const [results, setResults] = useState([])
   const [locating, setLocating] = useState(false)
@@ -80,7 +81,7 @@ function LocationSearch({ value, onPick }) {
   return (
     <div className="space-y-3">
       <div className="relative">
-        <VoiceField value={query} onChange={setQuery} placeholder="Village, town or district" autoFocus />
+        <VoiceField value={query} onChange={setQuery} placeholder={t('placePh')} autoFocus />
         <AnimatePresence>
           {results.length > 0 && (
             <motion.ul initial={{ opacity: 0, y: -4 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
@@ -98,7 +99,7 @@ function LocationSearch({ value, onPick }) {
         </AnimatePresence>
       </div>
       <button type="button" onClick={useMyLocation} className="inline-flex items-center gap-2 rounded-full border border-line bg-surface px-4 py-2 text-sm font-semibold hover:border-brand">
-        {locating ? <Spinner size={16} /> : <LocateFixed size={16} className="text-brand" />} Use my current location
+        {locating ? <Spinner size={16} /> : <LocateFixed size={16} className="text-brand" />} {t('useMyLocation')}
       </button>
       {value?.lat != null && (
         <div className="flex items-center gap-2 rounded-2xl bg-brand-soft px-4 py-3 text-sm text-brand-strong">
@@ -114,7 +115,7 @@ export default function Onboarding() {
   const navigate = useNavigate()
   const toast = useToast()
   const { user } = useUser()
-  const { lang, setLang } = useI18n()
+  const { lang, setLang, t } = useI18n()
   const { profile, onboarded, setProfile, setOnboarded } = useAppData()
   const [params] = useSearchParams()
   const [step, setStep] = useState(0)
@@ -138,7 +139,7 @@ export default function Onboarding() {
 
   function go(delta) {
     setDir(delta)
-    setStep((s) => Math.max(0, Math.min(STEPS.length - 1, s + delta)))
+    setStep((s) => Math.max(0, Math.min(STEP_KEYS.length - 1, s + delta)))
   }
 
   async function finish() {
@@ -164,8 +165,8 @@ export default function Onboarding() {
 
   const pages = [
     <div key="lang">
-      <h1 className="font-display text-3xl font-bold sm:text-4xl">Which language do you speak?</h1>
-      <p className="mt-2 text-muted">AgriAssist will talk to you in this language. You can always switch or speak another one.</p>
+      <h1 className="font-display text-3xl font-bold sm:text-4xl">{t('onboardLangTitle')}</h1>
+      <p className="mt-2 text-muted">{t('onboardLangHelp')}</p>
       <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3">
         {LANGUAGES.map((l) => (
           <button key={l.code} type="button" onClick={() => { set({ language: l.code }); if (l.ui) setLang(l.code) }}
@@ -179,61 +180,61 @@ export default function Onboarding() {
     </div>,
 
     <div key="about">
-      <h1 className="font-display text-3xl font-bold sm:text-4xl">Nice to meet you!</h1>
-      <p className="mt-2 text-muted">Tell us a little about yourself.</p>
-      <label className="mt-8 block text-sm font-semibold">Your name</label>
-      <VoiceField value={form.name} onChange={(name) => set({ name })} placeholder="e.g. Ramesh Patil" className="mt-2" />
-      <label className="mt-6 block text-sm font-semibold">What describes you best?</label>
+      <h1 className="font-display text-3xl font-bold sm:text-4xl">{t('onboardHi')}</h1>
+      <p className="mt-2 text-muted">{t('onboardAbout')}</p>
+      <label className="mt-8 block text-sm font-semibold">{t('onboardName')}</label>
+      <VoiceField value={form.name} onChange={(name) => set({ name })} placeholder={t('onboardNamePh')} className="mt-2" />
+      <label className="mt-6 block text-sm font-semibold">{t('onboardRole')}</label>
       <div className="mt-2 grid gap-3 sm:grid-cols-2">
         {ROLES.map((r) => (
           <button key={r.id} type="button" onClick={() => set({ role: r.id })}
             className={`flex items-center gap-3 rounded-2xl border-2 p-4 text-left transition ${form.role === r.id ? 'border-brand bg-brand-soft' : 'border-line bg-surface hover:border-brand/50'}`}>
             <span className="text-3xl">{r.emoji}</span>
-            <span><span className="block font-bold">{r.label}</span><span className="text-sm text-muted">{r.text}</span></span>
+            <span><span className="block font-bold">{t(r.label)}</span><span className="text-sm text-muted">{t(r.text)}</span></span>
           </button>
         ))}
       </div>
     </div>,
 
     <div key="loc">
-      <h1 className="font-display text-3xl font-bold sm:text-4xl">Where is your farm?</h1>
-      <p className="mt-2 text-muted">Used for local weather, sowing windows and nearby mandi prices.</p>
+      <h1 className="font-display text-3xl font-bold sm:text-4xl">{t('onboardWhere')}</h1>
+      <p className="mt-2 text-muted">{t('onboardWhereHelp')}</p>
       <div className="mt-8"><LocationSearch value={form} onPick={set} /></div>
     </div>,
 
     <div key="farm">
-      <h1 className="font-display text-3xl font-bold sm:text-4xl">About your farm</h1>
-      <p className="mt-2 text-muted">Skip anything that doesn't apply.</p>
-      <label className="mt-7 block text-sm font-semibold">Land</label>
+      <h1 className="font-display text-3xl font-bold sm:text-4xl">{t('onboardFarm')}</h1>
+      <p className="mt-2 text-muted">{t('onboardSkip')}</p>
+      <label className="mt-7 block text-sm font-semibold">{t('onboardLand')}</label>
       <div className="mt-2 flex gap-2">
         <input type="number" min="0" step="0.1" value={form.land_area} onChange={(e) => set({ land_area: e.target.value })} placeholder="5"
           className="w-32 rounded-xl border border-line bg-surface px-3 py-2.5 outline-none focus:border-brand" />
         <div className="flex rounded-xl border border-line bg-surface p-1">
-          {['acre', 'bigha', 'hectare'].map((u) => (
+          {[['acre', 'unitAcre'], ['bigha', 'unitBigha'], ['hectare', 'unitHectare']].map(([u, key]) => (
             <button key={u} type="button" onClick={() => set({ land_unit: u })}
-              className={`rounded-lg px-3 text-sm font-medium capitalize ${form.land_unit === u ? 'bg-brand text-white' : 'text-muted'}`}>{u}</button>
+              className={`rounded-lg px-3 text-sm font-medium ${form.land_unit === u ? 'bg-brand text-white' : 'text-muted'}`}>{t(key)}</button>
           ))}
         </div>
       </div>
-      <label className="mt-6 block text-sm font-semibold">Crops you grow</label>
+      <label className="mt-6 block text-sm font-semibold">{t('onboardCrops')}</label>
       <div className="mt-2 flex flex-wrap gap-2">
-        {CROPS.map(([c, e]) => <Chip key={c} active={form.crops.includes(c)} onClick={() => set((f) => ({ crops: toggle(f.crops, c) }))}>{e} {c}</Chip>)}
+        {CROPS.map(([c, e, key]) => <Chip key={c} active={form.crops.includes(c)} onClick={() => set((f) => ({ crops: toggle(f.crops, c) }))}>{e} {t(key)}</Chip>)}
         {form.crops.filter((c) => !CROPS.some(([x]) => x === c)).map((c) => (
           <Chip key={c} active onClick={() => set((f) => ({ crops: toggle(f.crops, c) }))}>{c}</Chip>
         ))}
         <form onSubmit={(e) => { e.preventDefault(); if (customCrop.trim()) { set({ crops: [...form.crops, customCrop.trim()] }); setCustomCrop('') } }}>
-          <input value={customCrop} onChange={(e) => setCustomCrop(e.target.value)} placeholder="+ Other crop"
+          <input value={customCrop} onChange={(e) => setCustomCrop(e.target.value)} placeholder={t('otherCrop')}
             className="w-36 rounded-full border border-dashed border-line bg-transparent px-3.5 py-2 text-sm outline-none focus:border-brand" />
         </form>
       </div>
-      <label className="mt-6 block text-sm font-semibold">Animals</label>
+      <label className="mt-6 block text-sm font-semibold">{t('onboardAnimals')}</label>
       <div className="mt-2 grid gap-2 sm:grid-cols-2">
-        {ANIMALS.map(([a, e]) => {
+        {ANIMALS.map(([a, e, key]) => {
           const n = form.livestock[a] || 0
           const setN = (v) => set((f) => ({ livestock: { ...f.livestock, [a]: Math.max(0, v) } }))
           return (
             <div key={a} className={`flex items-center gap-2 rounded-2xl border px-3 py-2 ${n ? 'border-brand bg-brand-soft' : 'border-line bg-surface'}`}>
-              <span className="text-2xl">{e}</span><span className="flex-1 text-sm font-medium capitalize">{a}</span>
+              <span className="text-2xl">{e}</span><span className="flex-1 text-sm font-medium">{t(key)}</span>
               <button type="button" onClick={() => setN(n - 1)} className="grid size-7 place-items-center rounded-full bg-surface-2"><Minus size={14} /></button>
               <input value={n} onChange={(ev) => setN(parseInt(ev.target.value || '0', 10) || 0)} className="w-8 bg-transparent text-center font-bold outline-none" />
               <button type="button" onClick={() => setN(n + 1)} className="grid size-7 place-items-center rounded-full bg-brand text-white"><Plus size={14} /></button>
@@ -241,22 +242,22 @@ export default function Onboarding() {
           )
         })}
       </div>
-      <label className="mt-6 block text-sm font-semibold">Irrigation</label>
-      <div className="mt-2 flex flex-wrap gap-2">{IRRIGATION.map((x) => <Chip key={x} active={form.irrigation === x} onClick={() => set({ irrigation: form.irrigation === x ? '' : x })}>{x}</Chip>)}</div>
-      <label className="mt-6 block text-sm font-semibold">Soil type</label>
-      <div className="mt-2 flex flex-wrap gap-2">{SOILS.map((x) => <Chip key={x} active={form.soil === x} onClick={() => set({ soil: form.soil === x ? '' : x })}>{x}</Chip>)}</div>
+      <label className="mt-6 block text-sm font-semibold">{t('onboardIrrigation')}</label>
+      <div className="mt-2 flex flex-wrap gap-2">{IRRIGATION.map(([x, key]) => <Chip key={x} active={form.irrigation === x} onClick={() => set({ irrigation: form.irrigation === x ? '' : x })}>{t(key)}</Chip>)}</div>
+      <label className="mt-6 block text-sm font-semibold">{t('onboardSoil')}</label>
+      <div className="mt-2 flex flex-wrap gap-2">{SOILS.map(([x, key]) => <Chip key={x} active={form.soil === x} onClick={() => set({ soil: form.soil === x ? '' : x })}>{t(key)}</Chip>)}</div>
     </div>,
 
     <div key="goals">
-      <h1 className="font-display text-3xl font-bold sm:text-4xl">What do you need help with?</h1>
-      <p className="mt-2 text-muted">Your goals and biggest problems. Speak or type in any language.</p>
+      <h1 className="font-display text-3xl font-bold sm:text-4xl">{t('onboardGoalsTitle')}</h1>
+      <p className="mt-2 text-muted">{t('onboardGoalsHelp')}</p>
       <div className="mt-6 flex flex-wrap gap-2">
-        {GOALS.map((g) => (
-          <Chip key={g} active={form.goals.includes(g)} onClick={() => set({ goals: form.goals.includes(g) ? form.goals.replace(g, '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') : [form.goals, g].filter(Boolean).join(', ') })}>{g}</Chip>
+        {GOALS.map(([g, key]) => (
+          <Chip key={g} active={form.goals.includes(g)} onClick={() => set({ goals: form.goals.includes(g) ? form.goals.replace(g, '').replace(/^[,\s]+|[,\s]+$/g, '').replace(/,\s*,/g, ',') : [form.goals, g].filter(Boolean).join(', ') })}>{t(key)}</Chip>
         ))}
       </div>
       <VoiceField as="textarea" rows={5} value={form.goals} onChange={(goals) => set({ goals })} className="mt-4"
-        placeholder="e.g. My wheat yield dropped last year and my cows give less milk in summer…" />
+        placeholder={t('onboardGoalsPh')} />
     </div>,
   ]
 
@@ -266,20 +267,20 @@ export default function Onboarding() {
         <div className="absolute -bottom-24 -right-24 size-80 rounded-full bg-[#f2c14e]/25 blur-3xl" />
         <Logo tone="light" className="relative" />
         <ol className="relative mt-8 hidden space-y-1 lg:block">
-          {STEPS.map((s, i) => (
+          {STEP_KEYS.map((s, i) => (
             <li key={s} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 transition ${i === step ? 'bg-white/15' : ''}`}>
               <span className={`grid size-7 place-items-center rounded-full text-sm font-bold ${i < step ? 'bg-white text-brand' : i === step ? 'bg-white/90 text-brand' : 'bg-white/15'}`}>
                 {i < step ? <Check size={14} /> : i + 1}
               </span>
-              <span className={i === step ? 'font-semibold' : 'text-white/75'}>{s}</span>
+              <span className={i === step ? 'font-semibold' : 'text-white/75'}>{t(s)}</span>
             </li>
           ))}
         </ol>
         <div className="relative mt-5 h-1.5 overflow-hidden rounded-full bg-white/20 lg:hidden">
-          <motion.div className="h-full bg-white" animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }} />
+          <motion.div className="h-full bg-white" animate={{ width: `${((step + 1) / STEP_KEYS.length) * 100}%` }} />
         </div>
         <p className="relative mt-auto hidden pt-16 text-sm text-white/80 lg:block">
-          This helps AgriAssist give advice for <b>your</b> land, crops and animals. You can change it anytime in Settings.
+          {t('onboardAside')}
         </p>
       </aside>
 
@@ -296,19 +297,19 @@ export default function Onboarding() {
         <div className="mx-auto mt-10 flex w-full max-w-2xl items-center gap-3">
           {step > 0 && (
             <button type="button" onClick={() => go(-1)} className="inline-flex items-center gap-2 rounded-full px-5 py-3 font-semibold hover:bg-surface-2">
-              <ArrowLeft size={18} /> Back
+              <ArrowLeft size={18} /> {t('back')}
             </button>
           )}
-          <span className="ml-auto text-sm text-muted">{step + 1} / {STEPS.length}</span>
-          {step < STEPS.length - 1 ? (
+          <span className="ml-auto text-sm text-muted">{step + 1} / {STEP_KEYS.length}</span>
+          {step < STEP_KEYS.length - 1 ? (
             <button type="button" disabled={!canNext} onClick={() => go(1)}
               className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-semibold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-strong disabled:opacity-40">
-              Continue <ArrowRight size={18} />
+              {t('continue')} <ArrowRight size={18} />
             </button>
           ) : (
             <button type="button" disabled={saving} onClick={finish}
               className="inline-flex items-center gap-2 rounded-full bg-brand px-6 py-3 font-semibold text-white shadow-lg shadow-brand/25 transition hover:bg-brand-strong">
-              {saving ? <Spinner /> : <Check size={18} />} Start using AgriAssist
+              {saving ? <Spinner /> : <Check size={18} />} {t('startUsing')}
             </button>
           )}
         </div>

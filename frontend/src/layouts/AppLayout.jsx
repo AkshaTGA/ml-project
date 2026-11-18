@@ -125,7 +125,7 @@ export default function AppLayout() {
           className="w-full rounded-xl border border-line bg-surface py-2 pl-9 pr-3 text-sm outline-none focus:border-brand" />
       </div>
       <div className="scroll-thin -mx-1 flex-1 overflow-y-auto px-1" onClick={() => isMobile() && setOpen(false)}>
-        {[['today', t('recent')], ['week', 'This week'], ['older', t('earlier')]].map(([key, label]) => groups[key].length > 0 && (
+        {[['today', t('recent')], ['week', t('thisWeek')], ['older', t('earlier')]].map(([key, label]) => groups[key].length > 0 && (
           <div key={key} className="mb-3">
             <div className="px-3 pb-1 text-[11px] font-bold tracking-wider text-muted uppercase">{label}</div>
             {groups[key].map((th) => (
@@ -133,7 +133,7 @@ export default function AppLayout() {
             ))}
           </div>
         ))}
-        {threads.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted">Your conversations will appear here.</p>}
+        {threads.length === 0 && <p className="px-3 py-6 text-center text-sm text-muted">{t('emptyChats')}</p>}
       </div>
       <div className="relative flex items-center gap-2 border-t border-line pt-3">
         <UserButton appearance={{ elements: { avatarBox: 'size-8' } }} />

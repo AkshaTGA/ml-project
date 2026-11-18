@@ -4,7 +4,7 @@
 import { Component, createContext, lazy, memo, Suspense, useContext, useMemo, useState } from 'react'
 import { motion } from 'motion/react'
 import {
-  AlertTriangle, BarChart3, Calculator, Check, CheckCircle2, CircleHelp, Info, Lightbulb, ListChecks, Star,
+  AlertTriangle, BarChart3, Calculator, Check, CheckCircle2, CircleHelp, ExternalLink, Info, Lightbulb, ListChecks, Star,
   TrendingDown, TrendingUp, XCircle,
 } from 'lucide-react'
 import { evaluate } from './formula'
@@ -315,6 +315,59 @@ function Gauge({ spec }) {
   )
 }
 
+function linkText(children) {
+  if (children == null || typeof children === 'boolean') return ''
+  if (typeof children === 'string' || typeof children === 'number') return String(children)
+  if (Array.isArray(children)) return children.map(linkText).join('')
+  return linkText(children.props?.children)
+}
+
+function linkParts(href, children) {
+  const text = linkText(children).trim()
+  let host = ''
+  let pathName = ''
+  try {
+    const url = new URL(href)
+    host = url.hostname.replace(/^www\./, '')
+    pathName = decodeURIComponent(url.pathname.split('/').filter(Boolean).pop() || '')
+  } catch { /* keep the raw address */ }
+  const bare = !text || text === href || /^https?:\/\//i.test(text)
+  const fromFile = pathName
+    .replace(/\.[a-z0-9]{2,5}$/i, '')
+    .replace(/[_.+%]+/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/\s+/g, ' ')
+    .trim()
+  return { title: bare ? (fromFile || host || text || href) : text, host }
+}
+
+/** A short titled link. Used for bare URLs in answers and for the links block. */
+export function SourceLink({ href, children }) {
+  const { title, host } = linkParts(href, children)
+  return (
+    <a href={href} target="_blank" rel="noreferrer"
+      className="source-card my-1.5 flex items-center gap-3 rounded-2xl border border-line bg-surface px-3 py-2.5 no-underline shadow-sm transition hover:border-brand">
+      <span className="grid size-9 shrink-0 place-items-center rounded-xl bg-brand-soft text-brand"><ExternalLink size={15} /></span>
+      <span className="min-w-0">
+        <span className="block truncate text-sm font-semibold text-ink">{title}</span>
+        {host && <span className="block truncate text-xs text-muted">{host}</span>}
+      </span>
+    </a>
+  )
+}
+
+function Links({ spec }) {
+  const items = (spec.items || []).filter((item) => item?.url)
+  return (
+    <div className="my-3">
+      <Title icon={ExternalLink}>{spec.title || 'Sources'}</Title>
+      <div className="space-y-2">
+        {items.map((item) => <SourceLink key={item.url} href={item.url}>{item.title || item.url}</SourceLink>)}
+      </div>
+    </div>
+  )
+}
+
 function Choices({ spec, onAsk, interactive }) {
   const [picked, setPicked] = useState(null)
   return (
@@ -334,7 +387,30 @@ function Choices({ spec, onAsk, interactive }) {
 
 const BLOCKS = {
   chart: Chart, stats: Stats, steps: Steps, schedule: Schedule, checklist: Checklist, compare: Compare,
-  callout: Callout, tips: Tips, calculator: CalculatorBlock, gauge: Gauge, choices: Choices,
+  callout: Callout, tips: Tips, calculator: CalculatorBlock, gauge: Gauge, choices: Choices, links: Links,
+}
+
+export const UI_TYPES = new Set(Object.keys(BLOCKS))
+
+/** A finished UI spec, or null when the text is not one of the known blocks. */
+export function parseUISpec(source) {
+  try {
+    const data = JSON.parse(String(source || '').trim())
+    const items = Array.isArray(data) ? data : [data]
+    if (items.length && items.every((item) => item && typeof item.type === 'string' && UI_TYPES.has(item.type))) return data
+  } catch { /* half-written or ordinary JSON */ }
+  return null
+}
+
+/** Models sometimes open the fence with ```json. Those blocks are the same visuals. */
+export function promoteUIFences(text) {
+  if (!text || !text.includes('```')) return text || ''
+  return text.replace(/```[ \t]*([a-zA-Z]*)[ \t]*\n?([\s\S]*?)```/g, (match, lang, body) => {
+    const name = String(lang || '').toLowerCase()
+    if (name === 'ui') return match
+    if (name && !['json', 'jsonc', 'javascript', 'js'].includes(name)) return match
+    return parseUISpec(body) ? `\`\`\`ui\n${body.trim()}\n\`\`\`` : match
+  })
 }
 
 class BlockBoundary extends Component {
@@ -349,7 +425,7 @@ class BlockBoundary extends Component {
 export const UIContext = createContext({ streaming: false, onAsk: null, interactive: false })
 
 function parse(source) {
-  try { return JSON.parse(source) } catch { return null /* incomplete or invalid */ }
+  return parseUISpec(source)
 }
 
 /**
@@ -372,5 +448,5 @@ export const UIBlock = memo(function UIBlock({ source }) {
   })
 })
 
-/** Answer text without the ```ui blocks (for copy and read-aloud). */
-export const stripUIBlocks = (text) => text.replace(/```ui[\s\S]*?(```|$)/g, '').replace(/\n{3,}/g, '\n\n').trim()
+/** Answer text without visual blocks, including ones the model fenced as json. */
+export const stripUIBlocks = (text) => promoteUIFences(text).replace(/```ui[\s\S]*?(```|$)/g, '').replace(/\n{3,}/g, '\n\n').trim()

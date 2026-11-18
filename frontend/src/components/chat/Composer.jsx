@@ -4,16 +4,18 @@ import { VoiceTypingButton } from '../common'
 import { downscaleImage, useApi } from '../../lib/api'
 import { useI18n } from '../../lib/i18n'
 import { useToast } from '../../lib/toast'
+import ContextChip from './ContextChip'
 import { Attachment } from './Message'
 
 const ACCEPT = 'image/*,.pdf,.txt,.csv,.md,.json'
 
-const Composer = forwardRef(function Composer({ busy, onSend, onStop, onVoiceMode }, ref) {
+const Composer = forwardRef(function Composer({ busy, onSend, onStop, onVoiceMode, onOpenContext }, ref) {
   const api = useApi()
   const toast = useToast()
   const { t } = useI18n()
   const [text, setText] = useState('')
   const [files, setFiles] = useState([])
+  const [context, setContext] = useState([])
   const fileRef = useRef(null)
   const cameraRef = useRef(null)
   const textRef = useRef(null)
@@ -39,16 +41,27 @@ const Composer = forwardRef(function Composer({ busy, onSend, onStop, onVoiceMod
     addFiles,
     setText: (value) => { setText(value); textRef.current?.focus() },
     pickImage: (prompt) => { if (prompt) setText(prompt); cameraRef.current?.click() },
+    addContext(item) {
+      setContext((prev) => {
+        const rest = item.type === 'message'
+          ? prev.filter((entry) => entry.type !== 'message')
+          : prev.filter((entry) => !(entry.type === item.type && entry.id === item.id))
+        return [...rest, item].slice(-3)
+      })
+      textRef.current?.focus()
+    },
   }))
 
   const uploading = files.some((f) => f.uploading)
-  const canSend = !busy && !uploading && (text.trim() || files.length)
+  const canSend = !busy && !uploading && (text.trim() || files.length || context.length)
 
   function submit() {
     if (!canSend) return
-    onSend(text, files.map(({ id, name, kind, content_type, preview }) => ({ id, name, kind, content_type, preview })))
+    const message = text.trim() || (context.length ? t('aboutThis') : '')
+    onSend(message, files.map(({ id, name, kind, content_type, preview }) => ({ id, name, kind, content_type, preview })), { context })
     setText('')
     setFiles([])
+    setContext([])
   }
 
   function insertVoice(spoken) {
@@ -59,9 +72,21 @@ const Composer = forwardRef(function Composer({ busy, onSend, onStop, onVoiceMod
   return (
     <div className="mx-auto w-full max-w-3xl">
       <div className="rounded-[30px] bg-ask p-2.5 shadow-[0_12px_32px_-18px_rgba(36,107,48,0.5)] transition focus-within:shadow-[0_14px_36px_-16px_rgba(36,107,48,0.6)]">
-        {files.length > 0 && (
-          <div className="flex flex-wrap gap-2 p-2 pb-1">
-            {files.map((f) => <Attachment key={f.key} file={f} pending={f.uploading} onRemove={() => setFiles((p) => p.filter((x) => x.key !== f.key))} />)}
+        {(context.length > 0 || files.length > 0) && (
+          <div className="flex flex-col gap-2 p-2 pb-1">
+            {context.length > 0 && (
+              <div className="flex flex-col items-start gap-1.5">
+                {context.map((item) => (
+                  <ContextChip key={`${item.type}-${item.id}`} item={item} onOpen={onOpenContext}
+                    onRemove={() => setContext((prev) => prev.filter((entry) => !(entry.type === item.type && entry.id === item.id)))} />
+                ))}
+              </div>
+            )}
+            {files.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {files.map((f) => <Attachment key={f.key} file={f} pending={f.uploading} onRemove={() => setFiles((p) => p.filter((x) => x.key !== f.key))} />)}
+              </div>
+            )}
           </div>
         )}
         <textarea ref={textRef} rows={1} value={text} placeholder={t('askAnything')}
@@ -90,7 +115,7 @@ const Composer = forwardRef(function Composer({ busy, onSend, onStop, onVoiceMod
           )}
         </div>
       </div>
-      <p className="mt-2 text-center text-[11px] text-muted">AgriAssist can make mistakes. Check important decisions with your local KVK or vet.</p>
+      <p className="mt-2 text-center text-[11px] text-muted">{t('mistakesNote')}</p>
     </div>
   )
 })

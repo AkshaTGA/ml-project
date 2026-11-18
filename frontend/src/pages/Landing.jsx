@@ -103,7 +103,7 @@ function AgentDemo({ compact = false }) {
 }
 
 const FEATURES = [
-  { icon: Sprout, title: 'Pasture biomass AI', text: 'Our DINO vision model estimates green, dead and clover dry matter from one photo, then turns it into grazing days for your herd.', tone: 'brand', big: true },
+  { icon: Sprout, title: 'Pasture biomass AI', text: 'A shared ResNet reads the pasture photo and the XGBoost model you pick estimates clover, dead, green, total, or green dry matter. Grad-CAM shows what the network used.', tone: 'brand', big: true },
   { icon: Mic, title: 'Talk in your language', text: 'Speak Hindi, Marathi, Tamil or 19 more languages. Hands-free voice mode answers out loud.', tone: 'gold' },
   { icon: Stethoscope, title: 'Leaf doctor', text: 'Snap a leaf. Get the disease, urgency, and organic or chemical treatment.', tone: 'danger' },
   { icon: IndianRupee, title: 'Mandi prices & weather', text: 'Live market rates and 7-day forecasts, turned into sow, spray and sell decisions.', tone: 'sky' },

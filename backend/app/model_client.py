@@ -2,10 +2,15 @@
 
 Image models get the uploaded image as multipart form data; other models get their inputs as JSON.
 Until a model's API URL is configured, a hardcoded mock response is returned instead.
+
+Biomass is a separate service. Each measurement has its own URL under that service:
+POST {BIOMASS_API_URL}/targets/{slug}/predict. Slugs must match ml-service/app/targets.py.
 """
 from __future__ import annotations
 
 import asyncio
+import base64
+import logging
 
 import httpx
 
@@ -14,7 +19,37 @@ from .clients import http
 from .config import BIOMASS_IMAGE_FIELD, MODEL_URLS
 from .registry import MODELS_BY_ID
 
+logger = logging.getLogger(__name__)
+
 MOCK_NOTE = "Mock response: this model's API is not connected yet."
+
+# Canonical target name -> path slug on the biomass service.
+BIOMASS_TARGETS = {
+    "Dry_Clover_g": "dry-clover",
+    "Dry_Dead_g": "dry-dead",
+    "Dry_Green_g": "dry-green",
+    "Dry_Total_g": "dry-total",
+    "GDM_g": "gdm",
+}
+_BIOMASS_ALIASES = {
+    "dry-clover": "Dry_Clover_g",
+    "dry-clover-g": "Dry_Clover_g",
+    "clover": "Dry_Clover_g",
+    "dry-dead": "Dry_Dead_g",
+    "dry-dead-g": "Dry_Dead_g",
+    "dead": "Dry_Dead_g",
+    "dry-green": "Dry_Green_g",
+    "dry-green-g": "Dry_Green_g",
+    "green": "Dry_Green_g",
+    "green-vegetation": "Dry_Green_g",
+    "dry-total": "Dry_Total_g",
+    "dry-total-g": "Dry_Total_g",
+    "total": "Dry_Total_g",
+    "total-dry-matter": "Dry_Total_g",
+    "gdm": "GDM_g",
+    "gdm-g": "GDM_g",
+    "green-dry-matter": "GDM_g",
+}
 
 MOCK_RESPONSES = {
     "biomass": {
@@ -38,6 +73,61 @@ class ModelError(Exception):
     pass
 
 
+def resolve_biomass_target(value: str) -> str:
+    """Map a user or agent choice onto one of the five trained target names."""
+    text = (value or "").strip()
+    if text in BIOMASS_TARGETS:
+        return text
+    key = "-".join(text.lower().replace("_", " ").split())
+    if key in _BIOMASS_ALIASES:
+        return _BIOMASS_ALIASES[key]
+    names = ", ".join(BIOMASS_TARGETS)
+    if not text:
+        raise ModelError(f"Choose which biomass to predict: {names}")
+    raise ModelError(f"Unknown biomass measurement '{value}'. Choose one of: {names}")
+
+
+async def _store_gradcam(user_id: str, slug: str, payload: dict) -> str | None:
+    encoded = (payload.get("gradcam") or {}).get("image_base64")
+    if not encoded:
+        return None
+    try:
+        saved = await files.save_upload(user_id, f"gradcam-{slug}.jpg", base64.b64decode(encoded), "image/jpeg")
+    except Exception:
+        logger.exception("Could not store Grad-CAM image")
+        return None
+    return saved["id"]
+
+
+async def _run_biomass(user_id: str, url: str, image, inputs: dict) -> dict:
+    target = resolve_biomass_target(str(inputs.get("target") or ""))
+    slug = BIOMASS_TARGETS[target]
+    endpoint = f"{url.rstrip('/')}/targets/{slug}/predict"
+    try:
+        response = await http.post(endpoint, files={BIOMASS_IMAGE_FIELD: image}, timeout=180)
+    except httpx.HTTPError as exc:
+        raise ModelError(f"Biomass model '{target}' is unreachable at {endpoint}: {exc}") from exc
+    if response.status_code >= 400:
+        raise ModelError(f"Biomass model '{target}' returned {response.status_code}: {response.text[:500]}")
+    body = response.json()
+    name = body.get("target", target)
+    value = float(body["prediction"])
+    gradcam = body.get("gradcam") or {}
+    return {
+        "mode": "live",
+        "target": name,
+        "label": body.get("label"),
+        "prediction": value,
+        "predictions": {name: value},
+        "units": body.get("units"),
+        "gradcam_file_id": await _store_gradcam(user_id, slug, body),
+        "gradcam_summary": gradcam.get("summary"),
+        "green_features": body.get("green_features"),
+        "backbone": body.get("backbone"),
+        "note": body.get("note"),
+    }
+
+
 async def run_model(user_id: str, model_id: str, inputs: dict) -> dict:
     spec = MODELS_BY_ID.get(model_id)
     if spec is None:
@@ -53,14 +143,18 @@ async def run_model(user_id: str, model_id: str, inputs: dict) -> dict:
         image = (meta["name"], content, meta["content_type"])
 
     url = MODEL_URLS[model_id]
+    if model_id == "biomass":
+        if not url:
+            return {**MOCK_RESPONSES[model_id], "mode": "mock", "note": MOCK_NOTE}
+        if image is None:
+            raise ModelError("Image not found. Upload an image first.")
+        return await _run_biomass(user_id, url, image, inputs)
+
     if not url:
         return {**MOCK_RESPONSES[model_id], "mode": "mock", "note": MOCK_NOTE}
 
     try:
-        if image:
-            response = await http.post(url, files={BIOMASS_IMAGE_FIELD: image}, timeout=120)
-        else:
-            response = await http.post(url, json=inputs, timeout=120)
+        response = await http.post(url, json=inputs, timeout=120)
     except httpx.HTTPError as exc:
         raise ModelError(f"Model API '{model_id}' is unreachable at {url}: {exc}") from exc
     if response.status_code >= 400:

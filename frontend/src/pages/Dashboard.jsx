@@ -37,12 +37,13 @@ function Kicker({ children }) {
 }
 
 function WeatherPanel({ weather, location }) {
+  const { t } = useI18n()
   if (!weather) {
     return (
       <Panel className="flex h-full flex-col justify-center bg-sky-soft text-ink">
-        <Kicker>Weather</Kicker>
-        <p className="mt-3 max-w-sm text-sm">Add your farm location in My Farm to see the forecast here.</p>
-        <Link to="/app/settings?tab=profile" className="mt-4 text-sm font-semibold text-sky">Add location</Link>
+        <Kicker>{t('weather')}</Kicker>
+        <p className="mt-3 max-w-sm text-sm">{t('dashNoLocation')}</p>
+        <Link to="/app/settings?tab=profile" className="mt-4 text-sm font-semibold text-sky">{t('dashAddLocation')}</Link>
       </Panel>
     )
   }
@@ -54,7 +55,7 @@ function WeatherPanel({ weather, location }) {
     <Panel className="flex h-full flex-col bg-sky-soft text-ink">
       <div className="flex items-end justify-between gap-4">
         <div>
-          <Kicker><span className="inline-flex items-center gap-1 normal-case tracking-normal"><MapPin size={12} /> {location || 'Your farm'}</span></Kicker>
+          <Kicker><span className="inline-flex items-center gap-1 normal-case tracking-normal"><MapPin size={12} /> {location || t('yourFarm')}</span></Kicker>
           <div className="mt-2 flex items-end gap-3">
             <span className="text-6xl leading-none font-bold tracking-tight">{temp}°</span>
             <span className="mb-1 text-3xl">{icon}</span>
@@ -200,10 +201,10 @@ export default function Dashboard() {
             <div className="border-b border-line p-5 lg:border-b-0 sm:p-6">
               <h2 className="flex items-center gap-2 text-sm font-bold"><AlertTriangle size={15} className="text-gold" /> {t('alerts')}</h2>
               <div className="mt-4 space-y-4">
-                {!data && <p className="text-sm text-muted">Checking the next few days…</p>}
+                {!data && <p className="text-sm text-muted">{t('dashChecking')}</p>}
                 {data?.alerts?.length === 0 && (
                   <div>
-                    <p className="text-2xl font-bold text-brand-strong">Clear</p>
+                    <p className="text-2xl font-bold text-brand-strong">{t('dashClear')}</p>
                     <p className="mt-1 text-sm text-muted">{t('noAlerts')}</p>
                   </div>
                 )}
@@ -222,8 +223,8 @@ export default function Dashboard() {
             <div className="border-b border-line p-5 lg:border-b-0 sm:p-6">
               <h2 className="flex items-center gap-2 text-sm font-bold"><IndianRupee size={15} className="text-brand" /> {t('mandi')}</h2>
               <div className="mt-4 space-y-1">
-                {!data && <p className="text-sm text-muted">Looking up today’s rates…</p>}
-                {data && !data.mandi?.length && <p className="text-sm text-muted">Add crops in My Farm to follow prices.</p>}
+                {!data && <p className="text-sm text-muted">{t('dashRates')}</p>}
+                {data && !data.mandi?.length && <p className="text-sm text-muted">{t('dashAddCrops')}</p>}
                 {data?.mandi?.map((m) => (
                   <button key={m.commodity} onClick={() => startChat({ prompt: `What is today's mandi price of ${m.commodity} near me? Should I sell now or wait?` })}
                     className="flex w-full items-baseline justify-between gap-3 border-b border-line py-3 text-left last:border-0">
@@ -250,8 +251,8 @@ export default function Dashboard() {
                     )}
                   </Link>
                 ))}
-                {!data && <p className="text-sm text-muted">Loading your questions…</p>}
-                {data && !data.recent_threads?.length && <p className="text-sm text-muted">No questions yet. Ask one above.</p>}
+                {!data && <p className="text-sm text-muted">{t('dashLoading')}</p>}
+                {data && !data.recent_threads?.length && <p className="text-sm text-muted">{t('dashNoQuestions')}</p>}
               </div>
             </div>
           </div>

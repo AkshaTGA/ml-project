@@ -35,14 +35,17 @@ async def thread_messages(thread_id: str, request: Request, user_id: str = Depen
     for message in state.values.get("messages", []) if state else []:
         if isinstance(message, HumanMessage):
             attachments = await files.get_many(user_id, message.additional_kwargs.get("attachments", []))
-            result.append({"role": "user", "content": message.additional_kwargs.get("display_text", ""),
-                           "attachments": [files.public(m) for m in attachments]})
+            result.append({"id": message.id, "role": "user",
+                           "content": message.additional_kwargs.get("display_text", ""),
+                           "attachments": [files.public(m) for m in attachments],
+                           "context": message.additional_kwargs.get("context") or []})
             current = None
             continue
         if current is None:
-            current = {"role": "assistant", "content": "", "steps": []}
+            current = {"id": None, "role": "assistant", "content": "", "steps": []}
             result.append(current)
         if isinstance(message, AIMessage):
+            current["id"] = message.id
             text = extract_text(message.content)
             if message.tool_calls:
                 if text:

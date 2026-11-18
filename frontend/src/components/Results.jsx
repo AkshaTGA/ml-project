@@ -1,7 +1,8 @@
 // Visual renderers for model and tool outputs, shared by the chat timeline and the Models page.
-import { Component } from 'react'
+import { Component, useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import { AlertTriangle, ExternalLink, FlaskConical, Leaf, ShieldCheck } from 'lucide-react'
+import { useApi } from '../lib/api'
 import { WEATHER } from '../pages/Dashboard'
 
 const BIOMASS = [
@@ -38,12 +39,67 @@ const Head = ({ title, mode }) => (
 )
 const Note = ({ children }) => children ? <p className="mt-3 text-xs text-muted">{children}</p> : null
 
+const GREEN_FEATURES = [
+  ['exg_mean', 'ExG mean'],
+  ['exg_std', 'ExG std'],
+  ['exg_top10', 'ExG top 10%'],
+  ['gndvi_mean', 'GNDVI'],
+]
+
+function GradcamImage({ fileId, alt }) {
+  const api = useApi()
+  const [src, setSrc] = useState('')
+  const [failed, setFailed] = useState(false)
+  useEffect(() => {
+    if (!fileId) return undefined
+    let url = ''
+    let live = true
+    api.fileBlob(fileId).then((blob) => {
+      url = URL.createObjectURL(blob)
+      if (live) setSrc(url)
+    }).catch(() => { if (live) setFailed(true) })
+    return () => {
+      live = false
+      if (url) URL.revokeObjectURL(url)
+    }
+  }, [api, fileId])
+  if (failed) return <p className="mt-3 text-xs text-danger">Could not load the Grad-CAM image.</p>
+  if (!src) return <div className="mt-3 h-48 animate-pulse rounded-2xl bg-surface-2" />
+  return <img src={src} alt={alt} className="mt-3 w-full rounded-2xl border border-line object-cover" />
+}
+
 function BiomassResult({ data }) {
-  const p = data.predictions
+  const predictions = data.predictions || (data.target != null && data.prediction != null ? { [data.target]: data.prediction } : null)
+  if (!predictions || !Object.keys(predictions).length) return <Raw data={data} />
+  const keys = Object.keys(predictions)
+  const single = keys.length === 1
+  const label = data.label || BIOMASS.find(([key]) => key === keys[0])?.[1] || keys[0]
   return (
     <div>
-      <Head title="Dry biomass (g per quadrat)" mode={data.mode} />
-      <Bars rows={BIOMASS.map(([k, label, color]) => ({ label, value: p[k], color }))} unit=" g" />
+      <Head title={single ? label : 'Dry biomass (g per quadrat)'} mode={data.mode} />
+      {single ? (
+        <>
+          <div className="text-4xl font-bold tabular-nums">
+            {Number(predictions[keys[0]]).toFixed(2)}
+            <span className="ml-1 text-base font-semibold text-muted">g</span>
+          </div>
+          <p className="text-xs text-muted">{data.units || 'grams of dry matter per sample quadrat'}</p>
+          {data.gradcam_file_id && <GradcamImage key={data.gradcam_file_id} fileId={data.gradcam_file_id} alt={`Grad-CAM overlay for ${label}`} />}
+          {data.gradcam_summary && <p className="mt-2 text-xs text-muted">{data.gradcam_summary}</p>}
+        </>
+      ) : (
+        <Bars rows={BIOMASS.filter(([key]) => predictions[key] != null).map(([key, name, color]) => ({ label: name, value: predictions[key], color }))} unit=" g" />
+      )}
+      {data.green_features && (
+        <div className="mt-3 grid grid-cols-2 gap-2">
+          {GREEN_FEATURES.filter(([key]) => data.green_features[key] != null).map(([key, name]) => (
+            <div key={key} className="rounded-2xl bg-surface-2 px-3 py-2">
+              <div className="text-[11px] text-muted">{name}</div>
+              <div className="font-semibold tabular-nums">{Number(data.green_features[key]).toFixed(2)}</div>
+            </div>
+          ))}
+        </div>
+      )}
       <Note>{data.note}</Note>
     </div>
   )

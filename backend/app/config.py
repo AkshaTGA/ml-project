@@ -12,10 +12,11 @@ load_dotenv(BASE_DIR / ".env")
 # Supported providers:
 #   1. Google AI Studio (Gemini)  — set GEMINI_API_KEY (or GOOGLE_API_KEY)
 #   2. NVIDIA NIM                 — set NVIDIA_API_KEY
-#   3. xAI Grok                   — set LLM_API_KEY / XAI_API_KEY
+#   3. Meta Muse (Model API)      — set MUSE_API_KEY (or MODEL_API_KEY)
+#   4. xAI Grok                   — set LLM_API_KEY / XAI_API_KEY
 #
-# You can explicitly choose the provider with LLM_PROVIDER=gemini|nvidia|xai.
-# If omitted, provider is auto-detected: gemini -> nvidia -> xai.
+# You can explicitly choose the provider with LLM_PROVIDER=gemini|nvidia|muse|xai.
+# If omitted, provider is auto-detected: gemini -> nvidia -> muse -> xai.
 # ---------------------------------------------------------------------------
 LLM_PROVIDER = os.getenv("LLM_PROVIDER", "").lower().strip()
 
@@ -31,6 +32,14 @@ NVIDIA_BASE_URL   = os.getenv("NVIDIA_BASE_URL", "https://integrate.api.nvidia.c
 NVIDIA_MODEL      = os.getenv("NVIDIA_MODEL",      "nvidia/nemotron-3-ultra-550b-a55b")
 NVIDIA_FAST_MODEL = os.getenv("NVIDIA_FAST_MODEL", "nvidia/nemotron-3-ultra-550b-a55b")
 
+# Meta Muse via the Meta Model API (OpenAI-compatible). The models always reason; effort trades depth for speed.
+MUSE_API_KEY             = os.getenv("MUSE_API_KEY") or os.getenv("MODEL_API_KEY", "")
+MUSE_BASE_URL            = os.getenv("MUSE_BASE_URL", "https://api.meta.ai/v1")
+MUSE_MODEL               = os.getenv("MUSE_MODEL", "muse-spark-1.3")
+MUSE_FAST_MODEL          = os.getenv("MUSE_FAST_MODEL", "muse-ember-1.0")
+MUSE_REASONING_EFFORT    = os.getenv("MUSE_REASONING_EFFORT", "medium")  # minimal | low | medium | high | xhigh | max
+MUSE_FAST_REASONING_EFFORT = os.getenv("MUSE_FAST_REASONING_EFFORT", "low")
+
 # xAI Grok
 LLM_API_KEY    = os.getenv("LLM_API_KEY") or os.getenv("XAI_API_KEY", "")
 LLM_MODEL      = os.getenv("LLM_MODEL",      "grok-4.7")
@@ -45,17 +54,22 @@ if LLM_PROVIDER in ("gemini", "google"):
     ACTIVE_PROVIDER = "gemini"
 elif LLM_PROVIDER in ("nvidia", "nim"):
     ACTIVE_PROVIDER = "nvidia"
+elif LLM_PROVIDER in ("muse", "meta"):
+    ACTIVE_PROVIDER = "muse"
 elif LLM_PROVIDER in ("xai", "grok"):
     ACTIVE_PROVIDER = "xai"
 elif GEMINI_API_KEY:
     ACTIVE_PROVIDER = "gemini"
 elif NVIDIA_API_KEY:
     ACTIVE_PROVIDER = "nvidia"
+elif MUSE_API_KEY:
+    ACTIVE_PROVIDER = "muse"
 else:
     ACTIVE_PROVIDER = "xai"
 
 USE_GEMINI = ACTIVE_PROVIDER == "gemini"
 USE_NVIDIA = ACTIVE_PROVIDER == "nvidia"
+USE_MUSE = ACTIVE_PROVIDER == "muse"
 USE_XAI = ACTIVE_PROVIDER == "xai"
 
 # Active model selection
@@ -67,6 +81,10 @@ elif USE_NVIDIA:
     ACTIVE_LLM_MODEL = NVIDIA_MODEL
     ACTIVE_FAST_MODEL = NVIDIA_FAST_MODEL
     IS_LLM_CONFIGURED = bool(NVIDIA_API_KEY)
+elif USE_MUSE:
+    ACTIVE_LLM_MODEL = MUSE_MODEL
+    ACTIVE_FAST_MODEL = MUSE_FAST_MODEL
+    IS_LLM_CONFIGURED = bool(MUSE_API_KEY)
 else:
     ACTIVE_LLM_MODEL = LLM_MODEL
     ACTIVE_FAST_MODEL = LLM_FAST_MODEL
@@ -85,6 +103,8 @@ SARVAM_STT_MODEL = os.getenv("SARVAM_STT_MODEL", "saaras:v3")
 SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3")
 
 # Deployed model API endpoints. A model with no URL returns a hardcoded mock response.
+# Biomass is the base URL of ml-service, not a single predict route. Each measurement is
+# POST {BIOMASS_API_URL}/targets/{slug}/predict.
 MODEL_URLS = {
     "biomass": os.getenv("BIOMASS_API_URL", ""),
     "crop": os.getenv("CROP_API_URL", ""),

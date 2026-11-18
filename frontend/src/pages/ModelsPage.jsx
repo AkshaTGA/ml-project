@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import { useNavigate } from 'react-router'
+import { useNavigate, useSearchParams } from 'react-router'
 import { motion } from 'motion/react'
-import { FlaskConical, ImagePlus, MessageSquareText, PawPrint, Play, Sprout, Wheat } from 'lucide-react'
-import { Spinner } from '../components/common'
+import { FlaskConical, ImagePlus, MessageSquareText, PawPrint, Play, Sprout, Trash2, Wheat } from 'lucide-react'
+import { AuthImage, Spinner } from '../components/common'
+import { flashFocus } from '../lib/focus'
 import { ModeBadge, Result } from '../components/Results'
 import { downscaleImage, useApi } from '../lib/api'
 import { useI18n } from '../lib/i18n'
@@ -13,40 +14,64 @@ function defaults(model) {
   return Object.fromEntries(model.fields.filter((f) => f.type !== 'image').map((f) => [f.name, f.default ?? '']))
 }
 
+function optionValue(option) {
+  return typeof option === 'string' ? option : option.value
+}
+
+function optionLabel(option, t) {
+  const id = optionValue(option)
+  const key = `opt_${id}`
+  if (t(key) !== key) return t(key)
+  return typeof option === 'string' ? option.replaceAll('_', ' ') : option.label
+}
+
+function helpText(field, t) {
+  const key = `help_${field.name}`
+  return t(key) === key ? '' : t(key)
+}
+
 function Field({ field, value, onChange, image, onImage }) {
+  const { t } = useI18n()
   const fileRef = useRef(null)
+  const label = t(`field_${field.name}`) === `field_${field.name}` ? field.label : t(`field_${field.name}`)
   if (field.type === 'image') {
     return (
       <div className="sm:col-span-2">
-        <label className="text-sm font-semibold">{field.label}</label>
+        <label className="text-sm font-semibold">{label}</label>
         <button type="button" onClick={() => fileRef.current.click()}
           onDragOver={(e) => e.preventDefault()} onDrop={(e) => { e.preventDefault(); onImage(e.dataTransfer.files[0]) }}
           className={`relative mt-1.5 flex h-60 w-full flex-col items-center justify-center gap-2 overflow-hidden rounded-2xl border-2 border-dashed text-muted transition hover:border-brand ${image ? 'border-transparent' : 'border-line bg-surface-2/50'}`}>
-          {image ? <img src={image.preview} alt="" className="absolute inset-0 size-full object-cover" /> : <><ImagePlus size={30} /><span className="text-sm">Click or drop a photo</span></>}
+          {image ? <img src={image.preview} alt="" className="absolute inset-0 size-full object-cover" /> : <><ImagePlus size={30} /><span className="text-sm">{t('dropPhoto')}</span></>}
           {image?.uploading && <div className="absolute inset-0 grid place-items-center bg-white/60"><Spinner /></div>}
         </button>
         <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e) => onImage(e.target.files[0])} />
-        {field.help && <p className="mt-1 text-xs text-muted">{field.help}</p>}
+        {helpText(field, t) && <p className="mt-1 text-xs text-muted">{helpText(field, t)}</p>}
       </div>
     )
   }
   if (field.type === 'select') {
     return (
-      <div>
-        <label className="text-sm font-semibold">{field.label}</label>
+      <div className={field.wide ? 'sm:col-span-2' : undefined}>
+        <label className="text-sm font-semibold">{label}</label>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {field.options.map((o) => (
-            <button key={o} type="button" onClick={() => onChange(o)}
-              className={`rounded-full border px-3 py-1.5 text-sm capitalize transition ${value === o ? 'border-brand bg-brand text-white' : 'border-line hover:border-brand'}`}>{o}</button>
-          ))}
+          {field.options.map((option) => {
+            const optionId = optionValue(option)
+            return (
+              <button key={optionId} type="button" onClick={() => onChange(optionId)}
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${value === optionId ? 'border-brand bg-brand text-white' : 'border-line hover:border-brand'} ${typeof option === 'string' ? 'capitalize' : ''}`}>
+                {optionLabel(option, t)}
+              </button>
+            )
+          })}
         </div>
+        {helpText(field, t) && <p className="mt-1 text-xs text-muted">{helpText(field, t)}</p>}
       </div>
     )
   }
   if (field.type === 'multiselect') {
     return (
       <div className="sm:col-span-2">
-        <label className="text-sm font-semibold">{field.label}</label>
+        <label className="text-sm font-semibold">{label}</label>
         <div className="mt-1.5 flex flex-wrap gap-1.5">
           {field.options.map((o) => {
             const on = value.includes(o)
@@ -65,7 +90,7 @@ function Field({ field, value, onChange, image, onImage }) {
   return (
     <div>
       <div className="flex items-baseline justify-between">
-        <label className="text-sm font-semibold">{field.label}</label>
+        <label className="text-sm font-semibold">{label}</label>
         <span className="text-xs text-muted">{field.unit}</span>
       </div>
       <input type="number" value={value} min={field.min} max={field.max} step={field.step ?? 1}
@@ -79,9 +104,32 @@ function Field({ field, value, onChange, image, onImage }) {
   )
 }
 
-function ModelPanel({ model }) {
+function resultChip(model, result, image) {
+  const preview = result.prediction != null
+    ? `${Number(result.prediction).toFixed(1)} g`
+    : result.risk_level
+      ? `${result.risk_level} risk`
+      : result.recommendations?.[0]?.crop || model.name
+  return {
+    type: 'tool_run',
+    id: result.run_id,
+    title: result.label || model.name,
+    preview,
+    image_id: image?.id || null,
+    focus_id: result.run_id,
+  }
+}
+
+function formatWhen(iso) {
+  const date = new Date(iso)
+  if (Number.isNaN(date.getTime())) return ''
+  return date.toLocaleString(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+}
+
+function ModelPanel({ model, onRan }) {
   const api = useApi()
   const navigate = useNavigate()
+  const { t } = useI18n()
   const [values, setValues] = useState(() => defaults(model))
   const [image, setImage] = useState(null)
   const [result, setResult] = useState(null)
@@ -106,7 +154,10 @@ function ModelPanel({ model }) {
     e.preventDefault()
     setRunning(true); setError(''); setResult(null)
     try {
-      setResult(await api.runModel(model.id, model.input_type === 'image' ? { image: image?.id } : values))
+      const inputs = model.input_type === 'image' ? { ...values, image: image?.id } : values
+      const outcome = await api.runModel(model.id, inputs)
+      setResult(outcome)
+      onRan?.()
     } catch (err) {
       setError(err.message)
     } finally {
@@ -115,13 +166,13 @@ function ModelPanel({ model }) {
   }
 
   function discuss() {
-    const inputs = model.input_type === 'image' ? 'the attached photo' : `inputs ${JSON.stringify(values)}`
-    navigate('/app/chat', {
-      state: { prompt: `I ran the ${model.name} on ${inputs}.\nResult: ${JSON.stringify(result)}\n\nPlease explain this in simple words and tell me what I should do.` },
-    })
+    if (!result?.run_id) return
+    navigate('/app/chat', { state: { prompt: t('explainResult'), context: [resultChip(model, result, image)] } })
   }
 
-  const canRun = model.input_type !== 'image' || (image?.id && !image.uploading)
+  const imageOk = model.input_type !== 'image' || (image?.id && !image.uploading)
+  const fieldsOk = model.fields.every((field) => !field.required || field.type === 'image' || (values[field.name] !== '' && values[field.name] != null))
+  const canRun = imageOk && fieldsOk
   return (
     <motion.div key={model.id} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="grid items-start gap-4 lg:grid-cols-[1.15fr_1fr]">
       <form onSubmit={run} className="rounded-3xl border border-line bg-surface p-5 shadow-sm">
@@ -133,7 +184,7 @@ function ModelPanel({ model }) {
         </div>
         <button disabled={!canRun || running}
           className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl bg-brand py-3 font-semibold text-white shadow-md shadow-brand/25 transition hover:bg-brand-strong disabled:opacity-50">
-          {running ? <Spinner /> : <Play size={17} />} Check now
+          {running ? <Spinner /> : <Play size={17} />} {t('checkNow')}
         </button>
       </form>
       <div className="min-h-64 rounded-3xl border border-line bg-surface p-5 shadow-sm">
@@ -141,13 +192,14 @@ function ModelPanel({ model }) {
         {result ? (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
             <Result kind={model.id} data={result} />
-            <button onClick={discuss} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-2.5 font-semibold transition hover:border-brand hover:text-brand">
-              <MessageSquareText size={17} /> Ask what this means
+            <button onClick={discuss} disabled={!result.run_id}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl border border-line py-2.5 font-semibold transition hover:border-brand hover:text-brand disabled:opacity-50">
+              <MessageSquareText size={17} /> {t('askMeaning')}
             </button>
           </motion.div>
         ) : !error && (
           <div className="grid h-56 place-items-center text-center text-sm text-muted">
-            <div><FlaskConical className="mx-auto mb-2 opacity-50" />Results will appear here.</div>
+            <div><FlaskConical className="mx-auto mb-2 opacity-50" />{t('resultsHere')}</div>
           </div>
         )}
       </div>
@@ -158,13 +210,42 @@ function ModelPanel({ model }) {
 export default function ModelsPage() {
   const api = useApi()
   const { t } = useI18n()
+  const [params] = useSearchParams()
+  const focusRun = params.get('run')
   const [models, setModels] = useState([])
+  const [runs, setRuns] = useState([])
   const [selected, setSelected] = useState(null)
   const [error, setError] = useState('')
+  const [openRun, setOpenRun] = useState(focusRun)
+  const [seenFocus, setSeenFocus] = useState(focusRun)
+  const [followedRun, setFollowedRun] = useState(null)
+  if (focusRun !== seenFocus) {
+    setSeenFocus(focusRun)
+    setOpenRun(focusRun)
+  }
+  const focused = runs.find((run) => run.id === focusRun)
+  if (focused && focusRun !== followedRun) {
+    setFollowedRun(focusRun)
+    if (focused.tool !== selected) setSelected(focused.tool)
+  }
+
+  function loadRuns() {
+    api.runs().then(setRuns).catch(() => {})
+  }
 
   useEffect(() => {
-    api.models().then((m) => { setModels(m); setSelected(m[0]?.id) }).catch((e) => setError(e.message))
-  }, [api])
+    api.models().then((m) => {
+      setModels(m)
+      setSelected((current) => current || m[0]?.id)
+    }).catch((e) => setError(e.message))
+    loadRuns()
+  }, [api]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!focusRun || !runs.length) return undefined
+    const timer = setTimeout(() => flashFocus(focusRun), 80)
+    return () => clearTimeout(timer)
+  }, [focusRun, runs])
 
   const model = models.find((m) => m.id === selected)
   return (
@@ -190,8 +271,109 @@ export default function ModelsPage() {
             )
           })}
         </div>
-        <div className="mt-6">{model && <ModelPanel key={model.id} model={model} />}</div>
+        <div className="mt-6">{model && <ModelPanel key={model.id} model={model} onRan={loadRuns} />}</div>
+        {model && <ToolHistory model={model} runs={runs.filter((run) => run.tool === model.id)} openRun={openRun} setOpenRun={setOpenRun} onChanged={loadRuns} />}
       </div>
     </div>
+  )
+}
+
+function ToolHistory({ model, runs, openRun, setOpenRun, onChanged }) {
+  const api = useApi()
+  const { t } = useI18n()
+  const navigate = useNavigate()
+  const Icon = ICONS[model.id] || FlaskConical
+  const [error, setError] = useState('')
+
+  async function remove(run) {
+    if (!window.confirm(t('deleteRunConfirm'))) return
+    setError('')
+    try {
+      await api.deleteRun(run.id)
+      if (openRun === run.id) setOpenRun(null)
+      onChanged()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  async function clear() {
+    if (!window.confirm(t('clearRunsConfirm'))) return
+    setError('')
+    try {
+      await api.clearRuns(model.id)
+      setOpenRun(null)
+      onChanged()
+    } catch (err) {
+      setError(err.message)
+    }
+  }
+
+  return (
+    <section className="mt-8">
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="font-display text-2xl font-bold text-brand-strong">{t('recentChecks')}</h2>
+        {runs.length > 0 && (
+          <button type="button" onClick={clear} className="text-sm font-semibold text-danger hover:underline">{t('clearHistory')}</button>
+        )}
+      </div>
+      <p className="mt-1 text-sm text-muted">{t('noChecks')}</p>
+      {error && <p className="mt-2 text-sm text-danger">{error}</p>}
+      <div className="mt-4 grid gap-3">
+        {runs.map((run) => {
+          const open = openRun === run.id
+          return (
+            <article key={run.id} data-focus-id={run.id} className="rounded-3xl border border-line bg-surface shadow-sm">
+              <div className="flex items-center">
+              <button type="button" onClick={() => setOpenRun(open ? null : run.id)}
+                className="flex min-w-0 flex-1 items-center gap-3 p-3 text-left">
+                {run.image_id
+                  ? <AuthImage fileId={run.image_id} alt="" className="size-16 shrink-0 rounded-2xl object-cover" />
+                  : <span className="grid size-16 shrink-0 place-items-center rounded-2xl bg-brand-soft text-brand"><Icon size={22} /></span>}
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-bold">{run.title}</span>
+                    {run.thread_id && <span className="shrink-0 rounded-full bg-brand-soft px-2 py-0.5 text-[10px] font-bold tracking-wide text-brand uppercase">{t('fromChat')}</span>}
+                  </span>
+                  <span className="block truncate text-sm text-muted">{run.summary}</span>
+                  <span className="mt-0.5 block text-xs text-muted">{formatWhen(run.created_at)}</span>
+                </span>
+              </button>
+              <button type="button" title={t('deleteRun')} aria-label={t('deleteRun')} onClick={() => remove(run)}
+                className="mr-3 grid size-9 shrink-0 place-items-center rounded-full text-muted hover:bg-danger-soft hover:text-danger">
+                <Trash2 size={16} />
+              </button>
+              </div>
+                  {open && (
+                    <div className="space-y-3 border-t border-line px-4 py-4">
+                      <Result kind={run.tool} data={run.result} />
+                      <div className="flex flex-wrap gap-2">
+                        <button type="button" onClick={() => navigate('/app/chat', {
+                          state: {
+                            prompt: t('explainResult'),
+                            context: [{
+                              type: 'tool_run', id: run.id, thread_id: run.thread_id, title: run.title,
+                              preview: run.summary, image_id: run.image_id,
+                              focus_id: run.thread_id ? run.message_id : run.id,
+                            }],
+                          },
+                        })}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-line px-3 py-2 text-sm font-semibold transition hover:border-brand hover:text-brand">
+                          <MessageSquareText size={16} /> {t('askMeaning')}
+                        </button>
+                        {run.thread_id && (
+                          <button type="button" onClick={() => navigate(`/app/chat/${run.thread_id}`, { state: { focus: run.message_id || run.id } })}
+                            className="inline-flex items-center gap-2 rounded-2xl border border-line px-3 py-2 text-sm font-semibold transition hover:border-brand hover:text-brand">
+                            {t('viewInChat')}
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                  )}
+            </article>
+          )
+        })}
+      </div>
+    </section>
   )
 }

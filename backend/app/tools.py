@@ -40,11 +40,19 @@ async def _call_model(config: RunnableConfig, model_id: str, inputs: dict) -> st
 # ---------- ML models ----------
 
 @tool
-async def predict_pasture_biomass(file_id: str, config: RunnableConfig) -> str:
-    """Estimate pasture dry biomass from an uploaded top-down pasture/grass photo.
-    Returns grams of dry matter for clover, dead material, green vegetation, green dry matter
-    (GDM) and total, per sample quadrat. Use the file_id of an image the user uploaded."""
-    return await _call_model(config, "biomass", {"image": file_id})
+async def predict_pasture_biomass(
+    file_id: str,
+    target: Literal["Dry_Clover_g", "Dry_Dead_g", "Dry_Green_g", "Dry_Total_g", "GDM_g"],
+    config: RunnableConfig,
+) -> str:
+    """Estimate one pasture biomass measurement from an uploaded top-down pasture photo.
+
+    target is required. Ask the user which measurement they want before calling this if they
+    did not say. Meanings: Dry_Clover_g clover, Dry_Dead_g dead material, Dry_Green_g green
+    vegetation other than clover, GDM_g green dry matter (green + clover), Dry_Total_g all
+    dry matter. Returns grams per sample quadrat for that one model, plus a Grad-CAM image
+    of the shared ResNet embedding. Use Dry_Total_g or GDM_g with estimate_grazing_days."""
+    return await _call_model(config, "biomass", {"image": file_id, "target": target})
 
 
 @tool
@@ -258,11 +266,20 @@ async def get_weather(config: RunnableConfig, location: str | None = None) -> st
 
 @tool
 async def remember_fact(fact: str, config: RunnableConfig) -> str:
-    """Save an important long-term fact about the user or their farm (e.g. 'Has 12 Gir cows',
-    'Field soil is black cotton soil'), when the user tells you something worth remembering
-    or explicitly asks you to remember. Write it as a short third-person sentence."""
-    saved = await memory.add_memory(_user(config), fact, source_thread=config["configurable"].get("thread_id"))
-    return _dump({"saved": bool(saved), "fact": fact, "note": None if saved else "Already known"})
+    """Keep one standing fact in the long-term summary. Use it only when the user asks you to
+    remember something, or states a lasting preference or constraint that is not already in the
+    profile or the long-term summary. Do not use it for weather, prices, today's symptoms, a photo
+    result, or advice you just gave. Write one short third-person sentence."""
+    user_id = _user(config)
+    profile = await profiles.get(user_id)
+    decision = await memory.remember_explicitly(
+        fast_llm(), user_id, fact, config["configurable"].get("thread_id"), profiles.describe(profile),
+    )
+    return _dump({
+        "saved": decision["status"] == "promoted",
+        "fact": fact,
+        "note": decision.get("note"),
+    })
 
 
 @tool
