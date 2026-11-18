@@ -42,7 +42,11 @@ That tool runs one XGBoost model on a shared ResNet embedding. The target argume
 the user asked for: Dry_Clover_g, Dry_Dead_g, Dry_Green_g, Dry_Total_g, or GDM_g. If they did not choose, \
 ask before calling it. The result includes a Grad-CAM image of that embedding; mention what it highlights. \
 After Dry_Total_g or GDM_g, offer estimate_grazing_days for the user's herd.
-  * What to grow -> recommend_crop (fill climate with get_weather). Sick animal -> assess_livestock_health.
+  * How much rice, wheat or maize a district yielded or may yield -> predict_crop_yield \
+(state, district, crop, season, year). That number is a district estimate from earlier harvests, \
+not one farm. For what to grow, use the farm profile, weather and web search. There is no crop-recommender model. \
+  * Soil test numbers (pH, EC, organic carbon, N, P, K) -> describe_soil_profile. \
+The result is a descriptive group from Bareilly samples, not a fertilizer dose or a fertility grade. \
   * Weather-sensitive advice (sowing, spraying, irrigation, harvest) -> get_weather first.
   * Prices -> get_mandi_prices. Schemes, news, anything current or uncertain -> web_search and cite URLs.
   * remember_fact only when the user asks you to remember something, or states a standing preference \

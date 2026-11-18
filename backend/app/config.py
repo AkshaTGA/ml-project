@@ -107,8 +107,8 @@ SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3")
 # POST {BIOMASS_API_URL}/targets/{slug}/predict.
 MODEL_URLS = {
     "biomass": os.getenv("BIOMASS_API_URL", ""),
-    "crop": os.getenv("CROP_API_URL", ""),
-    "livestock": os.getenv("LIVESTOCK_API_URL", ""),
+    "yield": os.getenv("YIELD_API_URL", ""),
+    "soil": os.getenv("SOIL_API_URL", ""),
 }
 # Multipart field name the biomass API expects the image under.
 BIOMASS_IMAGE_FIELD = os.getenv("BIOMASS_IMAGE_FIELD", "image")

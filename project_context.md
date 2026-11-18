@@ -3,9 +3,10 @@
 This document is the source of truth for describing the project. It has two halves that belong in one system.
 
 1. **Pasture biomass model.** The model to describe is the one developed in `context.md`, and the **final architecture is the diagram in `image.jpeg`**. That diagram is the model. Earlier experiments in this document exist only to explain how that architecture was reached.
-2. **AgriAssist, the agentic product.** A multilingual website for Indian farmers and herders. A person signs in, describes their farm once, and then talks to an agent by text, voice, or photo. The agent shows its work, uses tools (including the biomass model), and remembers the farm across chats.
+2. **District crop yield and soil-profile clusters.** These two trained models are specified in full in `yield_and_soil_context.md`. This file says how the product uses them.
+3. **AgriAssist, the agentic product.** A multilingual website for Indian farmers and herders. A person signs in, describes their farm once, and then talks to an agent by text, voice, or photo. The agent shows its work, uses tools (including the three trained models), and remembers the farm across chats.
 
-The biomass model is the machine-learning core. AgriAssist is how a farmer actually uses that number: “how many days can this paddock feed my animals, and what should I do tomorrow?”
+The three trained models are pasture biomass, district yield for rice, wheat and maize, and a soil-profile grouping. AgriAssist is how a farmer uses those numbers: “how many days can this paddock feed my animals?”, “what did this district yield?”, “which group does this soil test sit with?”
 
 ---
 
@@ -13,12 +14,13 @@ The biomass model is the machine-learning core. AgriAssist is how a farmer actua
 
 **AgriAssist** is an agentic AI agronomist and veterinary helper for Indian farmers, herders, mixed farms, agribusinesses, and agriculture students.
 
-A farmer does not want a model score. They want a decision: graze or rest the field, spray or wait, sell the crop or hold it, call a vet or watch the animal. AgriAssist keeps the farm’s facts (place, land, crops, animals, soil, irrigation, goals) and answers in the language the person just used. When the question needs a measurement, a price, or the weather, the agent calls a tool instead of guessing. When the question is about a pasture photo, it runs the biomass model in section 4 and then explains the result in farming terms.
+A farmer does not want a model score. They want a decision: graze or rest the field, spray or wait, sell the crop or hold it, call a vet or watch the animal. AgriAssist keeps the farm’s facts (place, land, crops, animals, soil, irrigation, goals) and answers in the language the person just used. When the question needs a measurement, a price, or the weather, the agent calls a tool instead of guessing. When the question is about a pasture photo, it runs the biomass model in section 5. When the question is a district rice, wheat or maize yield, it runs the yield model. When the question is a soil test, it runs the soil-profile model. It then explains the result in farming terms.
 
-The product is a web app that works in a phone browser. It is an ML course project whose two claims are:
+The product is a web app that works in a phone browser. It is an ML course project whose claims are:
 
 - a pasture-biomass estimator built for the CSIRO biomass problem, with the final architecture in `image.jpeg`;
-- an agent that puts that estimator, and the rest of a farm’s daily decisions, into one conversation that remembers the farm.
+- a district yield model for rice, wheat and maize, and a four-group soil-profile model, both specified in `yield_and_soil_context.md`;
+- an agent that puts those models, and the rest of a farm’s daily decisions, into one conversation that remembers the farm.
 
 Public framing on the landing page: “The AI expert every farmer deserves.” The rotating word in the headline is farmer in several Indian languages (farmer, किसान, शेतकरी, ਕਿਸਾਨ, விவசாயி, రైతు, herder, ಕೃಷಿಕ, কৃষক). The three headline numbers are **22 languages by voice**, **12 agent tools**, and **farm memory that persists**.
 
@@ -421,7 +423,7 @@ The rest of the product does not branch into five different apps. The role is pa
 3. **Onboarding**, five steps, about a minute, skippable where a step does not apply. Until this is finished, the app routes the person back to onboarding. “Redo farm setup” in Settings runs the same flow again.
 4. **Home.** Today’s date, a greeting with their name, local weather and a 7-day strip if a location exists, alerts, mandi prices for up to three of their crops, recent questions, and one-tap actions.
 5. **Chat.** The main surface. Text, a photo, a voice typing mic on every field, or a full hands-free voice mode.
-6. **Tools.** Three model tools that can be run without a conversation: pasture biomass, crop recommender, livestock health. Each keeps its own history. A run the agent starts from a chat photo also appears in that tool’s history, marked as from chat.
+6. **Tools.** Three trained model tools that can be run without a conversation: pasture biomass, crop yield, and soil profile. Each keeps its own history. A run the agent starts from a chat also appears in that tool’s history, marked as from chat.
 7. **My Farm / Settings.** Profile, memory, how the assistant should talk, language and voice.
 
 The app shell is a phone-friendly sidebar: new question, home, ask the assistant, my farm, tools, settings, search over past questions, and the question list grouped into recent, this week, and earlier. A language control sits at the bottom of the sidebar.
@@ -474,9 +476,9 @@ Three cards.
 
 **Pasture biomass.** The person gives a top-down photo of the sample area. The photo is the wide, two-half frame the model expects. The model in section 5 runs once and returns all five gram values. The page keeps every run: thumbnail, the five numbers, when it was run, and whether the agent started it from a chat. A run can be deleted. The whole history of this tool can be cleared. **Ask what this means** opens a chat with a short question (“Explain this in simple words and tell me what I should do”) and a small card pointing at that run. The chat bubble shows the card, not a dump of JSON. The agent also receives the original photo so it can talk about what is in the frame.
 
-**Crop recommender.** Soil and climate in, a ranked list of crops out. Inputs: nitrogen, phosphorus, and potassium in kg/ha, temperature in °C, humidity in %, soil pH, rainfall in mm. The result is a list of `{crop, confidence}`. On the agent side, missing climate numbers are filled from the weather tool rather than invented. History, delete, clear, and “ask what this means” work the same way.
+**Crop yield.** State, district, crop (rice, wheat or maize), season, and year. The service builds the historical features itself from recorded harvests strictly before that year, for the same district, crop and season. The card shows tonnes per hectare, the previous harvest, the mean of the last three records, how many years since that record, and how many earlier records exist. The form only offers crop–season pairs that district actually recorded. The year control runs from 1998 to 2050 and starts at 2016. A year after 2015 still runs, and it reuses the last recorded harvests; it is not a trend forecast. History, delete, clear, and “ask what this means” work the same way. The full model is in `yield_and_soil_context.md`.
 
-**Livestock health.** A triage, not a diagnosis that replaces a vet. Inputs: species (cattle, buffalo, goat, sheep), rectal temperature in °C, appetite (normal, reduced, none), and any of these visible signs: coughing, nasal discharge, fast breathing, diarrhea, bloating, lameness, salivation, mouth blisters, skin lesions, reduced milk, swollen udder, weight loss. The result is a risk level (high, medium, low) and possible conditions with a match score. The agent is required to point serious cases to a veterinarian.
+**Soil profile.** Six lab numbers: pH, electrical conductivity in millimhos/cm, organic carbon in percent, and N, P, K in kg/ha. The model assigns one of four clusters learned from 257 Bareilly samples, shows that group’s median for each nutrient, and flags a sample that sits farther from every centre than 95% of the training rows. The result is a descriptive group. It is not a fertility grade and not a fertilizer dose. The full model is in `yield_and_soil_context.md`.
 
 Runs started by the person on this page and runs started by the agent in chat share one history per tool. A chat run is badged “from chat” and can jump back to that message.
 
@@ -536,7 +538,8 @@ Phone browser
         ├── local embeddings (fastembed, multilingual MiniLM, 384-d)
         ├── Sarvam: speech to text, text to speech
         ├── biomass model of section 5
-        ├── crop recommender and livestock triage
+        ├── yield-service: district rice, wheat and maize yield
+        ├── soil-service: four-group soil profile
         ├── Open-Meteo weather and geocoding
         ├── data.gov.in Agmarknet mandi prices
         └── web search (Tavily if configured, otherwise DuckDuckGo)
@@ -550,7 +553,7 @@ A chat turn is a graph:
 START → load_context → agent ⇄ tools → END
 ```
 
-`load_context` loads the profile, the long-term summary, the last three other chat summaries, and this chat’s own summary. `agent` is the main LLM with the twelve tools bound. If the model calls tools, the tool node runs them (parallel calls run together) and control returns to the agent. The loop stops when the agent sends a final answer with no tool call. Recursion limit is 30, which is far above a normal turn of one to three tool rounds.
+`load_context` loads the profile, the long-term summary, the last three other chat summaries, and this chat’s own summary. `agent` is the main LLM with the twelve tools bound. Two of those tools are the trained yield and soil models. There is no crop-recommender model and no livestock-triage model. If the model calls tools, the tool node runs them (parallel calls run together) and control returns to the agent. The loop stops when the agent sends a final answer with no tool call. Recursion limit is 30, which is far above a normal turn of one to three tool rounds.
 
 Memory reflection is **not** a node in this loop. It runs after the answer has already been streamed, so it never delays the reply. If the person closes the tab mid-answer, the run still finishes on the server and the answer and the reflection are saved.
 
@@ -594,13 +597,13 @@ The card contains:
 
 The answering model also sees the photo itself, so it can disagree with or qualify the card. The agent must not recommend a banned pesticide, and must send serious cases to a KVK or agriculture officer as well as giving the steps.
 
-### 8.3 `recommend_crop`
+### 8.3 `predict_crop_yield`
 
-When the person asks what to grow. Inputs are the seven soil and climate numbers in section 6.5. If the person has not given the climate, the agent calls `get_weather` and uses the farm’s real weather rather than a made-up temperature or rainfall. The result is a ranked list of crops with confidence. The profile’s soil, location, and existing crops are context for the written answer, not silent overrides of the numbers.
+When the person asks how much rice, wheat or maize a district yielded, or what a later year would look like from that history. Inputs are state, district, crop, season and year. The yield service refuses a crop–season pair that district never recorded, and it refuses a year that has no earlier record. The number is tonnes per hectare for the district, not for one farm. “What should I grow?” is answered from the profile, the weather and web search. There is no separate crop-recommender model.
 
-### 8.4 `assess_livestock_health`
+### 8.4 `describe_soil_profile`
 
-When an animal is sick or the person describes signs. Inputs are the species, temperature, appetite, and symptom list in section 6.5. The result is a risk level and possible conditions with match scores. Serious illness is always paired with “see a veterinarian”. The tool does not prescribe prescription-only drugs as if it had examined the animal.
+When the person has a soil test: pH, EC, organic carbon, nitrogen, phosphorus, potassium. The soil service returns the cluster, a plain description of that group, the group medians, and whether the sample is unusually far from the training groups. The agent must not turn the cluster into a fertilizer dose. A sick animal is answered in words, with a veterinarian for anything serious. There is no livestock-health model.
 
 ### 8.5 `estimate_grazing_days`
 
@@ -814,7 +817,7 @@ While the agent works, a vertical timeline replaces a blank wait.
 
 - A context step for reading the farm.
 - One row per tool. The row **keeps that tool’s own icon** when it finishes, with a small check or a small cross. It does not turn into a generic spinner afterwards.
-- The tool’s name on the first line, a short detail on the second (the crop, “your photo”, “N P K pH”, the animal and its temperature, the place, the search query).
+- The tool’s name on the first line, a short detail on the second (the crop and season, “your photo”, the soil pH, the place, the search query).
 - A live timer in tenths of a second.
 - A failed step is visually quieter than a successful one: danger tint, not a second copy of the error in the answer.
 - Thought steps, when detailed mode is on, use a different icon from tools.
@@ -826,8 +829,8 @@ Simple-mode labels are everyday phrases (“Checking your grass…”, “Lookin
 Tool result cards render inside the timeline when the result has a known shape:
 
 - biomass: the five gram values;
-- crop: horizontal bars of confidence;
-- livestock: a risk pill and condition bars;
+- yield: tonnes per hectare, the previous harvest, the three-record mean, the gap in years, and the record count;
+- soil: the cluster, its description, and each measurement beside that group’s median;
 - leaf: the disease or “looks healthy”, urgency, organic / chemical / prevention / other possibilities;
 - mandi: a table of market, modal, min–max, date;
 - weather and grazing: the structured numbers.
@@ -909,9 +912,9 @@ Cached in process for 10 minutes, dropped on write. `describe(profile)` is the t
 
 `id`, `user_id`, `tool`, `title`, `summary`, `inputs` (JSON), `result` (JSON), `image_id`, `thread_id`, `message_id`, `created_at`.
 
-Written when a biomass, crop, or livestock tool finishes, whether the person ran it on the Tools page or the agent ran it in chat. The three names the agent uses (`predict_pasture_biomass`, `recommend_crop`, `assess_livestock_health`) are stored against the same three tool ids as the page (`biomass`, `crop`, `livestock`), so there is one history per kind of check.
+Written when a biomass, yield, or soil tool finishes, whether the person ran it on the Tools page or the agent ran it in chat. The names the agent uses (`predict_pasture_biomass`, `predict_crop_yield`, `describe_soil_profile`) are stored against the same tool ids as the page (`biomass`, `yield`, `soil`), so there is one history per kind of check.
 
-One-line summaries: “48.7 g per quadrat”, “wheat 62%”, “high risk”, “12 grazing days”, “₹3921 modal”, “31°C”.
+One-line summaries: “48.7 g per quadrat”, “1.95 t/ha”, “Cluster 0”, “12 grazing days”, “₹3921 modal”, “31°C”.
 
 ### 12.5 Checkpointer and store
 
@@ -996,6 +999,8 @@ These are the walks through the whole system. A presentation can use any of them
 | Answering model | Tool-calling LLM with vision. Default family xAI Grok; Gemini, NVIDIA NIM, or Meta Muse can be selected. |
 | Fast model | Structured reflection, summary rewrite, leaf-diagnosis card. |
 | Biomass | Section 5. Shared ResNet-50, 12-d green features, 4108-d vector, five XGBoost regressors. |
+| Crop yield | `yield_and_soil_context.md`. Random forest on district history. Rice, wheat, maize. |
+| Soil profile | `yield_and_soil_context.md`. Standard scaler and 4-cluster KMeans on six lab measurements. |
 | Embeddings | fastembed, paraphrase-multilingual-MiniLM-L12-v2, 384-d, local. |
 | Database | Postgres with pgvector. |
 | Voice | Sarvam Saaras v3 (listen), Bulbul v3 (speak). |
@@ -1031,6 +1036,8 @@ The interface is built for a phone browser first: the sidebar, the composer, voi
 - **Shared backbone** — one ResNet-50, used for both halves.
 - **12-d proposed green features** — the four ExG/GNDVI statistics on the left half, the right half, and the full image.
 - **4108-d** — 2048 + 2048 + 12.
+- **District yield** — tonnes per hectare for rice, wheat or maize in one district and season, from earlier recorded harvests only.
+- **Soil cluster** — one of four descriptive groups from Bareilly samples. Not a fertility grade.
 - **Long-term memory** — one summary, plus the farm profile. Not a list of facts.
 - **Candidate** — a note that has been seen and is not yet long-term.
 - **KVK** — Krishi Vigyan Kendra, the local confirmation point for serious crop advice.

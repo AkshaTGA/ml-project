@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { motion } from 'motion/react'
-import { FlaskConical, ImagePlus, MessageSquareText, PawPrint, Play, Sprout, Trash2, Wheat } from 'lucide-react'
+import { ChartColumn, FlaskConical, ImagePlus, Layers, MessageSquareText, Play, Sprout, Trash2 } from 'lucide-react'
 import { AuthImage, Spinner } from '../components/common'
 import { flashFocus } from '../lib/focus'
 import { ModeBadge, Result } from '../components/Results'
 import { downscaleImage, useApi } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
-const ICONS = { biomass: Sprout, crop: Wheat, livestock: PawPrint }
+const ICONS = { biomass: Sprout, yield: ChartColumn, soil: Layers }
 
 function defaults(model) {
   return Object.fromEntries(model.fields.filter((f) => f.type !== 'image').map((f) => [f.name, f.default ?? '']))
@@ -20,17 +20,40 @@ function optionValue(option) {
 
 function optionLabel(option, t) {
   const id = optionValue(option)
-  const key = `opt_${id}`
+  const key = `opt_${String(id).replaceAll(' ', '_')}`
   if (t(key) !== key) return t(key)
   return typeof option === 'string' ? option.replaceAll('_', ' ') : option.label
 }
 
 function helpText(field, t) {
   const key = `help_${field.name}`
-  return t(key) === key ? '' : t(key)
+  const translated = t(key)
+  return translated === key ? (field.help || '') : translated
 }
 
-function Field({ field, value, onChange, image, onImage }) {
+function dependencies(field) {
+  if (!field.depends_on) return []
+  return Array.isArray(field.depends_on) ? field.depends_on : [field.depends_on]
+}
+
+function visibleOptions(field, values) {
+  const options = field.options || []
+  const deps = dependencies(field)
+  if (!deps.length) return options
+  if (deps.some((name) => !values?.[name])) return []
+  const key = deps.map((name) => values[name]).join('|')
+  return options.filter((option) => typeof option !== 'object' || !option.when || option.when === key)
+}
+
+function chooseLabel(field, values, t) {
+  const missing = dependencies(field).find((name) => !values?.[name])
+  if (missing === 'state') return t('chooseStateFirst')
+  if (missing === 'district') return t('chooseDistrictFirst')
+  if (missing === 'crop') return t('chooseCropFirst')
+  return t('choose')
+}
+
+function Field({ field, value, onChange, image, onImage, values }) {
   const { t } = useI18n()
   const fileRef = useRef(null)
   const label = t(`field_${field.name}`) === `field_${field.name}` ? field.label : t(`field_${field.name}`)
@@ -50,11 +73,26 @@ function Field({ field, value, onChange, image, onImage }) {
     )
   }
   if (field.type === 'select') {
+    const options = visibleOptions(field, values)
+    const blocked = dependencies(field).some((name) => !values?.[name])
+    const useMenu = field.widget === 'menu' || options.length > 12
     return (
       <div className={field.wide ? 'sm:col-span-2' : undefined}>
         <label className="text-sm font-semibold">{label}</label>
+        {blocked ? (
+          <p className="mt-1.5 text-sm text-muted">{chooseLabel(field, values, t)}</p>
+        ) : useMenu ? (
+          <select value={value || ''} onChange={(e) => onChange(e.target.value)}
+            className="mt-1.5 w-full rounded-xl border border-line bg-surface px-3 py-2 outline-none focus:border-brand">
+            <option value="">{chooseLabel(field, values, t)}</option>
+            {options.map((option) => {
+              const optionId = optionValue(option)
+              return <option key={optionId} value={optionId}>{optionLabel(option, t)}</option>
+            })}
+          </select>
+        ) : (
         <div className="mt-1.5 flex flex-wrap gap-1.5">
-          {field.options.map((option) => {
+          {options.map((option) => {
             const optionId = optionValue(option)
             return (
               <button key={optionId} type="button" onClick={() => onChange(optionId)}
@@ -64,6 +102,7 @@ function Field({ field, value, onChange, image, onImage }) {
             )
           })}
         </div>
+        )}
         {helpText(field, t) && <p className="mt-1 text-xs text-muted">{helpText(field, t)}</p>}
       </div>
     )
@@ -105,7 +144,11 @@ function Field({ field, value, onChange, image, onImage }) {
 }
 
 function resultChip(model, result, image) {
-  const preview = result.prediction != null
+  const preview = result.units?.includes('tonne') && result.prediction != null
+    ? `${Number(result.prediction).toFixed(2)} t/ha`
+    : result.cluster != null
+    ? result.label
+    : result.prediction != null
     ? `${Number(result.prediction).toFixed(1)} g`
     : result.risk_level
       ? `${result.risk_level} risk`
@@ -178,8 +221,14 @@ function ModelPanel({ model, onRan }) {
       <form onSubmit={run} className="rounded-3xl border border-line bg-surface p-5 shadow-sm">
         <div className="grid gap-5 sm:grid-cols-2">
           {model.fields.map((f) => (
-            <Field key={f.name} field={f} value={values[f.name]} image={image} onImage={onImage}
-              onChange={(v) => setValues((p) => ({ ...p, [f.name]: v }))} />
+            <Field key={f.name} field={f} value={values[f.name]} values={values} image={image} onImage={onImage}
+              onChange={(v) => setValues((p) => {
+                const next = { ...p, [f.name]: v }
+                if (f.name === 'state') { next.district = ''; next.crop = ''; next.season = '' }
+                if (f.name === 'district') { next.crop = ''; next.season = '' }
+                if (f.name === 'crop') next.season = ''
+                return next
+              })} />
           ))}
         </div>
         <button disabled={!canRun || running}
@@ -254,7 +303,7 @@ export default function ModelsPage() {
         <h1 className="font-display text-3xl font-bold tracking-tight text-brand-strong sm:text-4xl">{t('farmTools')}</h1>
         <p className="mt-1 text-muted">{t('toolsHelp')}</p>
         {error && <div className="mt-4 rounded-2xl bg-danger-soft p-3 text-sm text-danger">{error}</div>}
-        <div className="mt-6 grid gap-3 md:grid-cols-3">
+        <div className="mt-6 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {models.map((m) => {
             const Icon = ICONS[m.id] || FlaskConical
             const active = m.id === selected

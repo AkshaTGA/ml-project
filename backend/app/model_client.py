@@ -57,15 +57,6 @@ MOCK_RESPONSES = {
                         "Dry_Total_g": 57.1, "GDM_g": 38.9},
         "units": "grams of dry matter per sample quadrat",
     },
-    "crop": {
-        "recommendations": [{"crop": "wheat", "confidence": 0.46}, {"crop": "mustard", "confidence": 0.31},
-                            {"crop": "chickpea", "confidence": 0.23}],
-    },
-    "livestock": {
-        "risk_level": "medium",
-        "possible_conditions": [{"condition": "Respiratory infection", "match": 0.5},
-                                {"condition": "Parasitic / digestive infection", "match": 0.25}],
-    },
 }
 
 
@@ -150,13 +141,27 @@ async def run_model(user_id: str, model_id: str, inputs: dict) -> dict:
             raise ModelError("Image not found. Upload an image first.")
         return await _run_biomass(user_id, url, image, inputs)
 
+    if model_id == "yield" and not url:
+        raise ModelError("Crop yield service is not configured. Set YIELD_API_URL and start yield-service.")
+    if model_id == "soil" and not url:
+        raise ModelError("Soil profile service is not configured. Set SOIL_API_URL and start soil-service.")
     if not url:
         return {**MOCK_RESPONSES[model_id], "mode": "mock", "note": MOCK_NOTE}
 
+    endpoint = f"{url.rstrip('/')}/predict" if model_id in {"yield", "soil"} else url
     try:
-        response = await http.post(url, json=inputs, timeout=120)
+        response = await http.post(endpoint, json=inputs, timeout=120)
     except httpx.HTTPError as exc:
-        raise ModelError(f"Model API '{model_id}' is unreachable at {url}: {exc}") from exc
+        raise ModelError(f"Model API '{model_id}' is unreachable at {endpoint}: {exc}") from exc
     if response.status_code >= 400:
-        raise ModelError(f"Model API '{model_id}' returned {response.status_code}: {response.text[:500]}")
+        detail = response.text[:500]
+        try:
+            body = response.json()
+            if isinstance(body.get("detail"), str):
+                detail = body["detail"]
+        except ValueError:
+            pass
+        if model_id in {"yield", "soil"}:
+            raise ModelError(detail)
+        raise ModelError(f"Model API '{model_id}' returned {response.status_code}: {detail}")
     return response.json()

@@ -2,14 +2,15 @@
 
 An agentic AI platform for Indian farmers and herders. Users sign in, describe their farm once, then talk to an agent by text, voice or photo in their own language. The agent shows its work live (memories recalled, reasoning, tool calls, model results) and remembers the farm across chats.
 
-The main ML model is the **pasture biomass estimator**: one shared ResNet-50 backbone and five XGBoost models (clover, dead, green, total, GDM), served by `ml-service` with one API each. Crop and livestock models are placeholders until trained.
+The ML models are the pasture biomass estimator (`ml-service`), the district crop-yield forest (`yield-service`), and the soil-profile clusters (`soil-service`).
 
 ```
 React + Vite + Tailwind ──/api (Clerk JWT)──▶ FastAPI + LangGraph agent ──▶ Grok (xAI)
   landing, onboarding, dashboard,               │   ├─ Postgres (Neon): chats, profiles, pgvector memory
   chat + live agent timeline,                   │   ├─ Sarvam AI: speech-to-text / text-to-speech
   voice mode, models, settings                  │   ├─ ml-service :8100 — one route per biomass model
-                                                │   ├─ Model APIs: crop, livestock (mock until trained)
+                                                │   ├─ yield-service :8200 — district rice, wheat, maize yield
+                                                │   ├─ soil-service :8300 — soil profile clusters
                                                 │   └─ Open-Meteo, data.gov.in mandi, web search
 ```
 
@@ -47,10 +48,18 @@ cd frontend && npm install && cd ..
 
 Tables are created automatically on first start. The first start also downloads the embedding model (about 1 minute).
 
-## Run (three terminals)
+## Run
 
 ```bash
 cd ml-service && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8100
+```
+
+```bash
+cd yield-service && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8200
+```
+
+```bash
+cd soil-service && .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8300
 ```
 
 ```bash
@@ -61,7 +70,7 @@ cd backend && uvicorn app.main:app --port 8000 --reload
 cd frontend && npm run dev
 ```
 
-The first terminal is the biomass model service. Install it once with `bash ml-service/install.sh`. See `ml-service/README.md` for the five APIs, the 2052-d input vector, and where to put `backbone_full.pt`.
+The biomass terminal is the pasture model service. Install it once with `bash ml-service/install.sh`. See `ml-service/README.md`. The yield terminal is the district rice, wheat and maize model. Install it once with `pip install -r yield-service/requirements.txt` inside `yield-service/.venv`. See `yield-service/README.md`.
 
 Open http://localhost:5173. Clerk only accepts the origins listed in `CLERK_AUTHORIZED_PARTIES`.
 
@@ -69,12 +78,12 @@ Open http://localhost:5173. Clerk only accepts the origins listed in `CLERK_AUTH
 
 See `backend/.env.example`. Highlights:
 - `LLM_MODEL=grok-4.7` (answers; streams its reasoning) and `LLM_FAST_MODEL=grok-4.20-non-reasoning` (background memory work and the leaf-diagnosis card).
-- `BIOMASS_API_URL`: base URL of `ml-service` (default in `.env.example` is `http://127.0.0.1:8100`). The app posts the photo to `/targets/{slug}/predict` for the measurement the user picked. Leave it empty for a mock biomass response. `CROP_API_URL` and `LIVESTOCK_API_URL` work the same way. The biomass image is sent as multipart field `BIOMASS_IMAGE_FIELD`.
+- `BIOMASS_API_URL`: base URL of `ml-service` (default in `.env.example` is `http://127.0.0.1:8100`). The app posts the photo to `/targets/{slug}/predict` for the measurement the user picked. Leave it empty for a mock biomass response. `YIELD_API_URL` is the district yield service. `SOIL_API_URL` is the soil-profile service. The biomass image is sent as multipart field `BIOMASS_IMAGE_FIELD`.
 - `DATA_GOV_IN_API_KEY` enables live Agmarknet mandi prices. Without it, prices come from web search.
 
 ### Model API contract
 
-- **Biomass:** the user chooses one of `Dry_Clover_g`, `Dry_Dead_g`, `Dry_Green_g`, `Dry_Total_g`, `GDM_g`. AgriAssist posts the image to `{BIOMASS_API_URL}/targets/{slug}/predict`. **Crop / livestock:** `POST` JSON with the fields in `backend/app/registry.py`.
+- **Biomass:** the user chooses one of `Dry_Clover_g`, `Dry_Dead_g`, `Dry_Green_g`, `Dry_Total_g`, `GDM_g`. AgriAssist posts the image to `{BIOMASS_API_URL}/targets/{slug}/predict`. **Yield:** `POST {YIELD_API_URL}/predict` with state, district, crop, season and year. **Soil:** `POST {SOIL_API_URL}/predict` with pH, EC, organic carbon, N, P and K.
 - Result cards expect: biomass `prediction` plus `predictions: {<target>: grams}`, optional `gradcam_file_id` and `green_features`; a mock with all five keys still renders as bars. Crop `recommendations: [{crop, confidence}]`; livestock `risk_level`, `possible_conditions: [{condition, match}]`. Other shapes still work in chat but show as raw JSON.
 
 ## Code map

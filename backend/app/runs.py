@@ -25,6 +25,10 @@ MODEL_OF = {
     "predict_pasture_biomass": "biomass",
     "crop": "crop",
     "recommend_crop": "crop",
+    "yield": "yield",
+    "predict_crop_yield": "yield",
+    "soil": "soil",
+    "describe_soil_profile": "soil",
     "livestock": "livestock",
     "assess_livestock_health": "livestock",
 }
@@ -34,6 +38,10 @@ _TITLES = {
     "predict_pasture_biomass": "Pasture biomass",
     "crop": "Crop recommendation",
     "recommend_crop": "Crop recommendation",
+    "yield": "Crop yield",
+    "predict_crop_yield": "Crop yield",
+    "soil": "Soil profile",
+    "describe_soil_profile": "Soil profile",
     "livestock": "Livestock check",
     "assess_livestock_health": "Livestock check",
     "diagnose_plant_disease": "Leaf check",
@@ -78,6 +86,12 @@ def summary_for(tool: str, data: dict) -> tuple[str, str]:
             share = _num((top.get("confidence") or 0) * 100)
             return title, f"{top.get('crop', 'crop')} {share or '0'}%"
         return title, "Crop recommendation"
+    if tool in {"yield", "predict_crop_yield"}:
+        amount = _num(data.get("prediction"))
+        return str(data.get("label") or title), f"{amount} t/ha" if amount else "Yield estimate"
+    if tool in {"soil", "describe_soil_profile"}:
+        label = data.get("label") or title
+        return str(label), str(data.get("summary") or label)[:140]
     if tool in {"livestock", "assess_livestock_health"}:
         risk = data.get("risk_level")
         return title, f"{risk} risk" if risk else "Livestock check"

@@ -1,0 +1,39 @@
+{
+  "model_type": "RandomForestRegressor",
+  "test_year": 2015,
+  "train_rows_for_evaluation": 33257,
+  "test_rows": 155,
+  "final_training_rows": 33412,
+  "selected_crops": [
+    "RICE",
+    "WHEAT",
+    "MAIZE"
+  ],
+  "feature_columns": [
+    "State_Name",
+    "District_Name",
+    "Crop",
+    "Season",
+    "Crop_Year",
+    "previous_yield",
+    "historical_mean_3",
+    "years_since_previous",
+    "history_count"
+  ],
+  "target": "yield_tonnes_per_hectare",
+  "baseline_metrics": {
+    "MAE_tonnes_per_hectare": 0.6735206483129542,
+    "RMSE_tonnes_per_hectare": 1.0200186899148462
+  },
+  "random_forest_metrics": {
+    "MAE_tonnes_per_hectare": 0.6748007845883531,
+    "RMSE_tonnes_per_hectare": 0.9980517669292569
+  },
+  "sklearn_version": "1.6.1",
+  "notes": [
+    "The evaluation is for the latest dataset year only.",
+    "Predictions are district-level, not individual farm estimates.",
+    "Historical features must contain only years before the prediction year.",
+    "Production and area unit assumptions must be confirmed with source documentation."
+  ]
+}

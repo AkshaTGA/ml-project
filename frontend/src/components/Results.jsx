@@ -117,6 +117,57 @@ function CropResult({ data }) {
 
 const RISK = { high: 'bg-danger-soft text-danger', medium: 'bg-gold-soft text-gold', low: 'bg-brand-soft text-brand' }
 
+function YieldResult({ data }) {
+  const stats = [
+    ['previous_yield', `Previous (${data.previous_year || 'last'})`],
+    ['historical_mean_3', 'Mean of last 3'],
+    ['years_since_previous', 'Years since then'],
+    ['history_count', 'Earlier records'],
+  ]
+  return (
+    <div>
+      <Head title={data.label || 'Crop yield'} mode={data.mode} />
+      <div className="text-4xl font-bold tabular-nums">
+        {Number(data.prediction).toFixed(2)}
+        <span className="ml-1 text-base font-semibold text-muted">t/ha</span>
+      </div>
+      <p className="text-xs text-muted">{data.units || 'tonnes per hectare'}</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {stats.map(([key, label]) => (
+          <div key={key} className="rounded-2xl bg-surface-2 px-3 py-2">
+            <div className="text-[11px] text-muted">{label}</div>
+            <div className="font-semibold tabular-nums">{data[key] ?? '–'}</div>
+          </div>
+        ))}
+      </div>
+      <Note>{data.note}</Note>
+    </div>
+  )
+}
+
+function SoilResult({ data }) {
+  const units = data.units || {}
+  const medians = data.group_medians || {}
+  const inputs = data.inputs || {}
+  return (
+    <div>
+      <Head title={data.label || 'Soil profile'} mode={data.mode} />
+      <p className="text-sm">{data.summary}</p>
+      <p className="mt-1 text-xs text-muted">{data.sample_count} similar samples in this group</p>
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {Object.keys(inputs).map((name) => (
+          <div key={name} className="rounded-2xl bg-surface-2 px-3 py-2">
+            <div className="text-[11px] text-muted">{name}{units[name] ? ` · ${units[name]}` : ''}</div>
+            <div className="font-semibold tabular-nums">{inputs[name]}</div>
+            {medians[name] != null && <div className="text-[11px] text-muted">Group median {medians[name]}</div>}
+          </div>
+        ))}
+      </div>
+      <Note>{data.note}</Note>
+    </div>
+  )
+}
+
 function LivestockResult({ data }) {
   return (
     <div>
@@ -252,6 +303,8 @@ function MemoryResult({ data }) {
 const BY_KEY = {
   biomass: BiomassResult, predict_pasture_biomass: BiomassResult,
   crop: CropResult, recommend_crop: CropResult,
+  yield: YieldResult, predict_crop_yield: YieldResult,
+  soil: SoilResult, describe_soil_profile: SoilResult,
   livestock: LivestockResult, assess_livestock_health: LivestockResult,
   diagnose_plant_disease: DiseaseResult, get_mandi_prices: MandiResult,
   estimate_grazing_days: GrazingResult, web_search: SearchResult, get_weather: WeatherResult,

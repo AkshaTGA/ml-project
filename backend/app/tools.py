@@ -56,32 +56,28 @@ async def predict_pasture_biomass(
 
 
 @tool
-async def recommend_crop(nitrogen: float, phosphorus: float, potassium: float, temperature: float,
-                         humidity: float, ph: float, rainfall: float, config: RunnableConfig) -> str:
-    """Recommend crops for given soil and climate. nitrogen/phosphorus/potassium in kg/ha,
-    temperature in C, humidity in %, ph of soil, rainfall in mm (seasonal).
-    If the user has not given some values, ask for them or use the weather tool to fill climate."""
-    inputs = {"nitrogen": nitrogen, "phosphorus": phosphorus, "potassium": potassium,
-              "temperature": temperature, "humidity": humidity, "ph": ph, "rainfall": rainfall}
-    return await _call_model(config, "crop", inputs)
+async def predict_crop_yield(state: str, district: str, crop: str, season: str, year: int,
+                             config: RunnableConfig) -> str:
+    """Estimate district yield in tonnes per hectare for rice, wheat or maize.
+
+    state and district are Indian names, for example Odisha and Anugul. crop is Rice, Wheat
+    or Maize. season is Kharif, Rabi, Autumn, Summer, Winter or Whole Year. year is the harvest
+    year to estimate. The model uses only recorded yields from earlier years for that same
+    district, crop and season. Say clearly that the number is a district estimate, not one farm.
+    If it reports that no earlier record exists, tell the user and do not invent a yield."""
+    return await _call_model(config, "yield", {
+        "state": state, "district": district, "crop": crop, "season": season, "year": year,
+    })
 
 
 @tool
-async def assess_livestock_health(
-    species: Literal["cattle", "buffalo", "goat", "sheep"],
-    body_temperature: float,
-    config: RunnableConfig,
-    appetite: Literal["normal", "reduced", "none"] = "normal",
-    symptoms: list[Literal["coughing", "nasal_discharge", "fast_breathing", "diarrhea", "bloating",
-                           "lameness", "salivation", "mouth_blisters", "skin_lesions", "reduced_milk",
-                           "swollen_udder", "weight_loss"]] | None = None,
-) -> str:
-    """Triage an animal's health: returns a risk level and possible conditions.
-    body_temperature is rectal temperature in C."""
-    return await _call_model(config, "livestock", {
-        "species": species, "body_temperature": body_temperature,
-        "appetite": appetite, "symptoms": symptoms or [],
-    })
+async def describe_soil_profile(ph: float, ec: float, oc: float, n: float, p: float, k: float,
+                                config: RunnableConfig) -> str:
+    """Group a soil test with similar samples. ph is unitless, ec is millimhos/cm, oc is organic
+    carbon in percent, and n, p, k are kg/ha. Returns a cluster, a plain description, and the
+    group's median measurements. This is not a fertility grade and not a fertilizer recommendation.
+    If the result says the sample is unusual, say that the numbers sit far from the training groups."""
+    return await _call_model(config, "soil", {"ph": ph, "ec": ec, "oc": oc, "n": n, "p": p, "k": k})
 
 
 @tool
@@ -320,6 +316,7 @@ async def update_farm_profile(
     return _dump({"updated": field, "value": parsed})
 
 
-TOOLS = [predict_pasture_biomass, diagnose_plant_disease, recommend_crop, assess_livestock_health,
+TOOLS = [predict_pasture_biomass, diagnose_plant_disease, predict_crop_yield,
+         describe_soil_profile,
          estimate_grazing_days, get_mandi_prices, get_weather, web_search, remember_fact, recall_memories,
          search_past_conversations, update_farm_profile]

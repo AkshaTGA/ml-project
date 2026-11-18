@@ -1,0 +1,33 @@
+{
+  "model_type": "StandardScaler + KMeans",
+  "features_in_order": [
+    "pH",
+    "EC",
+    "OC",
+    "N",
+    "P",
+    "K"
+  ],
+  "units": {
+    "pH": "unitless",
+    "EC": "millimhos/cm",
+    "OC": "percent",
+    "N": "kg/ha",
+    "P": "kg/ha",
+    "K": "kg/ha"
+  },
+  "dataset_rows_received": 257,
+  "rows_used": 257,
+  "evaluation_train_rows": 205,
+  "evaluation_test_rows": 52,
+  "selected_clusters": 4,
+  "heldout_silhouette": 0.5557669460675286,
+  "distance_warning_threshold": 1.260220286875484,
+  "distance_threshold_description": "95th percentile of nearest-centre distances on final training data; heuristic only, not calibrated confidence.",
+  "sklearn_version": "1.6.1",
+  "dataset_source": "AgriNet: A Soil Fertility Dataset for Deep Learning-Based Fertilizer Recommendation in Rice Cultivation",
+  "dataset_doi": "10.17632/c7tr9j78td.1",
+  "dataset_url": "https://data.mendeley.com/datasets/c7tr9j78td/1",
+  "dataset_license": "CC BY 4.0",
+  "scope": "Soil samples from Bareilly district, Uttar Pradesh, India."
+}
