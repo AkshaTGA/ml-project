@@ -1,18 +1,18 @@
-# District crop yield and soil profile — full model context
+# District crop yield, soil profile, and cattle liveweight — full model context
 
-This document is the source of truth for the two trained models that sit beside the pasture-biomass model. It does not describe a crop recommender and it does not describe a livestock-health model. Those are not part of the system.
+This document is the source of truth for the three **tabular** trained models that sit beside the pasture-biomass model. Pasture biomass is specified in `project_context.md` (and the diagram in `image.jpeg`). This file does not describe a crop recommender and it does not describe a livestock-health model. Those are not part of the system.
 
-Both models are scikit-learn 1.6.1 pipelines, loaded from joblib files, and each has its own small HTTP service. AgriAssist calls them when a person uses the Tools page or when the agent decides the question needs that measurement. The numbers below are the ones in the saved artifacts and the history file, not rounded marketing figures.
+All three models here are scikit-learn **1.6.1** pipelines, loaded from joblib files. They run inside the single AgriAssist `ml-service` process on port 8100, each on its own path. AgriAssist calls them when a person uses the Tools page or when the agent decides the question needs that measurement. The numbers below are the ones in the saved artifacts, not rounded marketing figures.
 
-| | Crop yield | Soil profile |
-|---|---|---|
-| Question | How many tonnes per hectare did this district harvest, or what does the recent record imply for a later year? | Which group of similar soil tests does this lab result sit with? |
-| Kind of model | Supervised regression | Unsupervised clustering |
-| Algorithm | One-hot encoding, median imputer, random forest | Standard scaler, KMeans, 4 clusters |
-| Rows the final fit saw | 33,412 eligible district-season-years | 257 soil samples |
-| Geography | 33 Indian states and union territories, 645 district names, rice, wheat and maize, 1997–2015 | Bareilly district, Uttar Pradesh |
-| Output | One non-negative number, tonnes per hectare | Cluster id 0, 1, 2 or 3, plus a distance flag |
-| What it is not | A forecast of one farmer’s field, and not a trend line into 2030 | A fertility grade, a soil texture, or a fertilizer dose |
+| | Crop yield | Soil profile | Cattle liveweight |
+|---|---|---|---|
+| Question | How many tonnes per hectare did this district harvest, or what does the recent record imply for a later year? | Which group of similar soil tests does this lab result sit with? | What liveweight, in kilograms, do these two tape measurements imply? |
+| Kind of model | Supervised regression | Unsupervised clustering | Supervised regression |
+| Algorithm | One-hot encoding, median imputer, random forest | Standard scaler, KMeans, 4 clusters | Linear regression on two centimetre measurements |
+| Rows the final fit saw | 33,412 eligible district-season-years | 257 soil samples | 517 cattle rows (516 unique animal IDs) |
+| Geography / population | 33 Indian states and union territories, 645 district names, rice, wheat and maize, 1997–2015 | Bareilly district, Uttar Pradesh | Indian cattle in Wasatkar et al.; breed, age and sex are not in the workbook |
+| Output | One non-negative number, tonnes per hectare | Cluster id 0, 1, 2 or 3, plus a distance flag | One non-negative number, kilograms, plus an out-of-range flag |
+| What it is not | A forecast of one farmer’s field, and not a trend line into 2030 | A fertility grade, a soil texture, or a fertilizer dose | A certified scale reading, a calf/goat/buffalo model, or an animal-health diagnosis |
 
 ---
 
@@ -385,32 +385,220 @@ The Tools page card is Soil Profile. Six sliders: pH from 3 to 10, EC from 0 to 
 
 The agent tool is `describe_soil_profile(ph, ec, oc, n, p, k)`. It is for a soil test the person already has. The agent is instructed not to convert the cluster into a fertilizer recommendation. If they ask what to apply, the answer has to come from agronomy and from the actual numbers, with the cluster only as a description of similar samples, and with the Bareilly limit said out loud.
 
-Runs are stored like the other two model tools. “Ask what this means” sends the cluster, the summary and the medians into the chat as a short card.
+Runs are stored like the other trained-model tools. “Ask what this means” sends the cluster, the summary and the medians into the chat as a short card.
 
 A soil cluster from one test is a result of this conversation. It belongs in the chat summary. It is not copied into long-term memory unless the person asks to keep a standing fact (“my vegetable plot’s soil test is always around pH 7.2 with very low phosphorus”) or that fact shows up again in a later chat.
 
 ---
 
-## Part C — How the two models differ, and how they meet
+## Part C — Cattle liveweight
 
-They answer different questions and must not be substituted for each other.
+### C1. The question the model answers
 
-| | Yield | Soil |
+A herder can tape a cow around the chest (heart girth) and along the body (body length) and ask what that animal would weigh. The model answers with a **liveweight in kilograms**. It is a linear fit of those two centimetres onto recorded scale weights. It is not a scale. It is not a body-condition score. It is not a diagnosis of illness.
+
+The delivered notes are explicit: experimental course-project model, not a certified weighing method; the workbook does not identify breed, age or sex; it has not been validated on independent farms; do not assume it works for calves, goats or buffaloes; predictions outside the training measurement ranges are unreliable; the same test split was used for model selection and evaluation; do not treat the prediction as an exact weight.
+
+### C2. Where the rows come from
+
+Dataset title stored in `evaluation_metrics.json`: “Morphometric Measurements and Body Weight Data of Indian Cattle Breeds for Machine Learning-Based Weight Prediction.”
+
+- Authors: Wasatkar et al.
+- Host: Mendeley Data
+- DOI: 10.17632/vhv6fph7w7.1
+- URL: https://data.mendeley.com/datasets/vhv6fph7w7/1
+- License: CC BY 4.0
+
+Rows used in the final fit: **517**. Unique animal IDs: **516**. One animal therefore appears twice. The split is by animal ID, not by row, so those two rows cannot sit one in train and one in test.
+
+### C3. The two inputs and the target
+
+The pipeline’s feature names, in order:
+
+1. `HeartGirth` — heart girth, assumed centimetres. The notes say: confirm the exact measurement definition and the unit with the source workbook.
+2. `BLBodylengthcm` — body length, in centimetres.
+
+The target column is `ActualBodyWeight`, assumed kilograms, again “confirm with source.”
+
+AgriAssist’s form and agent tool use the farmer-facing names `heart_girth` and `body_length`. The service maps those, and several aliases, onto the pipeline names:
+
+| Alias the service accepts | Pipeline column |
+|---|---|
+| `heartgirth`, `heart_girth`, `girth`, `hg`, `HeartGirth` | `HeartGirth` |
+| `blbodylengthcm`, `body_length`, `bodylength`, `length`, `bl`, `BLBodylengthcm` | `BLBodylengthcm` |
+
+Spaces become underscores, case is ignored. A missing name is an error, not an imputed centimetre. A non-positive measurement is refused. There is no third feature: no breed, no age, no sex, no height at withers, no BCS.
+
+### C4. How the rows were split
+
+`GroupShuffleSplit` by animal ID, `random_state=42`.
+
+| Split | Rows |
+|---|---|
+| Train, for the comparison that selected the model | 412 |
+| Held-out test | 105 |
+| Final delivered fit | all 517 |
+
+Grouping by animal ID is the leakage control. A random row split would have let the one repeated animal, and any animal-specific idiosyncrasy, leak from train into test.
+
+The 105-row test sheet (`test_predictions.csv`) is the same sheet that was used **both** to compare Linear Regression against Random Forest **and** to report the published MAE, RMSE and R². That is a real limit: the selection set and the evaluation set are the same 105 animals. The metrics are honest for that split; they are not a second, untouched confirmation set.
+
+On those 105 rows, recorded weight runs from 407 kg to 802 kg, mean 592.8 kg. Heart girth on the test sheet runs 179–225 cm, body length 177–240 cm. Those test extremes sit inside the full-file ranges below.
+
+### C5. Why linear regression, not the forest
+
+Two models were scored on the same 105 animals:
+
+| Model | MAE (kg) | RMSE (kg) | R² |
+|---|---|---|---|
+| Linear Regression | 32.846 | 40.977 | 0.740 |
+| Random Forest | 35.281 | 44.128 | 0.699 |
+
+Linear regression is better on every published number. A typical miss is about 33 kg on animals that weigh around 590 kg, roughly 5–6% of the mean. RMSE is larger than MAE because a few animals are missed by 80–116 kg (the test-sheet maximum absolute error is 116.1 kg). The first test row is a working example of a large miss: heart girth 188 cm, body length 197 cm, recorded 407 kg, held-out linear prediction 496.97 kg, error 90 kg. The line is a good average description of the cloud; it is not a scale for every animal.
+
+Random forest did not win. With only two features, both almost collinear with size, a linear plane is the right inductive bias. Trees would have to invent a non-linearity that this file does not support.
+
+### C6. The delivered equation
+
+The saved file is a scikit-learn 1.6.1 pipeline with a single step:
+
+```
+Pipeline(steps=[('model', LinearRegression())])
+```
+
+There is no scaler. The two centimetre columns go straight into the plane. After the 105-row comparison, that plane was **refit on all 517 clean rows**. The coefficients in the joblib file are therefore not identical to the coefficients that produced the held-out CSV.
+
+Loaded from `cattle_weight_pipeline.joblib`:
+
+| Term | Coefficient |
+|---|---|
+| `HeartGirth` (cm) | 6.369060437473909 |
+| `BLBodylengthcm` (cm) | 0.9779800481781072 |
+| Intercept | −896.3485387466278 |
+
+So the delivered prediction, in kilograms, is:
+
+```
+kg = 6.369060437473909 × heart_girth_cm
+   + 0.9779800481781072 × body_length_cm
+   − 896.3485387466278
+```
+
+Heart girth dominates. Ten extra centimetres of girth add about 64 kg. Ten extra centimetres of length add about 10 kg. That matches the farming rule of thumb that chest girth carries most of a Shaeffer’s-formula-style estimate; this fit is empirical on this file, not Shaeffer’s formula copied from a textbook.
+
+If a tree or a rounding error ever produced a negative kilogram value, the service clips it to 0. Ordinary in-range tapes do not go negative: the intercept is large and negative, but girth in the training range already more than cancels it.
+
+Because the delivered file was refit on all 517 rows, a tape pair that appears in `test_predictions.csv` will not reproduce that CSV’s “Linear Regression prediction” column exactly. The 188 / 197 pair is the checked example:
+
+| | kg |
+|---|---|
+| Recorded scale weight | 407 |
+| Held-out linear prediction (on the 412-row fit) | 496.97 |
+| Delivered joblib (refit on 517) | **493.7** |
+
+Mean absolute difference between delivered predictions and the held-out CSV column, on those 105 rows, is about 1.3 kg (maximum about 4.5 kg). Smoke tests must assert **493.7**, not 496.97.
+
+### C7. Training ranges, and the unusual flag
+
+From `evaluation_metrics.json`:
+
+| Quantity | Minimum | Maximum |
 |---|---|---|
-| Input the person knows | A place, a crop, a season, a year | Six lab numbers |
-| Uses the farm’s GPS? | No. It uses the district name. | No. It does not know where the sample was taken, except that the groups were learned in Bareilly. |
-| Uses weather? | No. | No. |
-| Supervised target | Yes, recorded yield | No target. Groups only. |
-| Can be wrong in a quiet way | Yes. A normal error is about 0.67 t/ha, and a year after 2015 mostly echoes the last harvests. | Yes. A point between two groups is labelled as one of them. A non-Bareilly soil can be labelled and flagged. |
-| Safe sentence | “District estimate from harvests recorded before this year, not one farm.” | “A group of similar Bareilly samples, not a fertilizer dose.” |
+| Heart girth | 171 cm | 233 cm |
+| Body length | 177 cm | 246 cm |
+| Recorded liveweight | 379 kg | 824 kg |
 
-A sensible conversation can use both, in order, without mixing their meanings. A farmer in Kiphire asks what rice yielded: the yield tool, kharif, 2016, 1.95 t/ha, from a 2014 record of 2.04. They then paste a soil test: the soil tool says which Bareilly group it resembles. The agent may talk about what low phosphorus means in general agronomy. It may not say “cluster 0 means apply this many kilos of DAP,” and it may not say “the district model predicts your two-acre field will harvest 1.95 t/ha.”
+A prediction is flagged `unusual` when **any** of these is true:
 
-The pasture-biomass model remains a third, separate measurement: grams of dry matter on a photographed quadrat. It does not feed the yield forest, and the yield forest does not feed it.
+- heart girth is outside 171–233 cm,
+- body length is outside 177–246 cm,
+- the predicted kilogram value is outside 379–824 kg.
+
+The service then prefixes the standing note with the training range, so the agent and the Tools card can say the tapes sit outside the animals this line was fit on. The kilogram number is still returned. It is not blanked. Blanking it would hide the fact that the plane continues as a plane; the honest behaviour is to show the number and the flag together.
+
+Checked points:
+
+| Heart girth | Body length | Delivered kg | Unusual? | Why |
+|---|---|---|---|---|
+| 188 | 197 | 493.7 | no | Inside every range |
+| 190 | 200 | (Tools-page default; in range) | no | Defaults on the form |
+| 202 | 211 | 596.6 | no | Near the test-set mean |
+| 171 | 177 | 365.9 | yes | Predicted weight falls below 379 |
+| 233 | 246 | 828.2 | yes | Predicted weight falls above 824 |
+| 140 | 150 | 142.0 | yes | Both tapes and the weight are outside |
+
+The 171 / 177 edge is the interesting one: both tapes are at the **minimum of the training measurements**, but the plane already predicts 366 kg, under the lightest recorded animal (379 kg). The flag is doing its job. The line is not a wall at the convex hull of the data.
+
+### C8. What the service returns
+
+`POST /cattle/predict` with JSON. Path on the unified service: `http://127.0.0.1:8100/cattle/predict`.
+
+```
+{
+  "mode": "live",
+  "prediction": 493.7,
+  "units": "kg",
+  "label": "Cattle liveweight",
+  "heart_girth": 188.0,
+  "body_length": 197.0,
+  "unusual": false,
+  "outside": [],
+  "ranges": {
+    "heart_girth": [171.0, 233.0],
+    "body_length": [177.0, 246.0],
+    "weight": [379.0, 824.0]
+  },
+  "note": "Estimate from heart girth and body length, in kilograms. Not a scale reading. Not for calves, goats or buffaloes."
+}
+```
+
+`prediction` is one decimal place. `outside` lists which of `heart_girth`, `body_length`, `weight` sat outside range. Errors are sentences: “Missing body_length”, “heart_girth must be greater than 0”, “heart_girth must be a number”. HTTP 400, never a fake kilogram.
+
+`GET /cattle/health` reports Linear Regression, the two feature names, and kilograms.
+
+### C9. How AgriAssist uses it
+
+The Tools page card is **Cattle liveweight**, beside district yield and soil, under the flagship pasture-biomass panel. Two number fields: heart girth and body length, centimetres, min 100, max 300, step 0.5, defaults 190 and 200. Help text: tape around the chest just behind the front legs; shoulder to pin bone as recorded in the training set.
+
+The result card shows the kilogram value large, the two tapes underneath, and a gold note when `unusual` is true. The run summary in history is “N kg”.
+
+The agent tool is `predict_cattle_weight(heart_girth, body_length)`. The system prompt says: tape estimates in kilograms, not a scale; not for calves, goats or buffaloes; a sick animal is answered in words with a veterinarian; there is no livestock-health model.
+
+The default liveweight in the **grazing calculator** remains 400 kg. A cattle-tool result can be used as `avg_liveweight_kg` when the person has just taped an animal and then asks how long the paddock will last, but the agent must still say that 400 kg is the calculator default when they have not taped anything.
+
+A taped weight belongs in the chat summary. It is not promoted into long-term memory unless the person asks to remember a standing fact (“this cow is the 490 kg animal we always tape in winter”) or that fact appears in a second conversation.
+
+### C10. What this model is not allowed to become
+
+- Not a scale. MAE 33 kg is the published typical miss.
+- Not a calf, goat, buffalo, sheep or poultry model. Those animals are on the farm profile; they are not inputs to this plane.
+- Not an animal-health model. Fever, appetite, lameness stay in prose plus a vet.
+- Not Shaeffer’s formula copied from a textbook, even though the two measurements are the same kind of tapes. The numbers above are this file’s least-squares plane.
+- Not a breed-adjusted table. Breed is not a column.
 
 ---
 
-## Part D — Files and services
+## Part D — How the three tabular models differ, and how they meet
+
+
+They answer different questions and must not be substituted for each other.
+
+| | Yield | Soil | Cattle |
+|---|---|---|---|
+| Input the person knows | A place, a crop, a season, a year | Six lab numbers | Two tape measurements, cm |
+| Uses the farm’s GPS? | No. It uses the district name. | No. It does not know where the sample was taken, except that the groups were learned in Bareilly. | No. |
+| Uses weather? | No. | No. | No. |
+| Supervised target | Yes, recorded yield | No target. Groups only. | Yes, recorded liveweight |
+| Can be wrong in a quiet way | Yes. A typical error is about 0.67 t/ha, and a year after 2015 mostly echoes the last harvests. | Yes. A point between two groups is labelled as one of them. A non-Bareilly soil can be labelled and flagged. | Yes. A typical error is about 33 kg, and a calf or a buffalo is outside the population. |
+| Safe sentence | “District estimate from harvests recorded before this year, not one farm.” | “A group of similar Bareilly samples, not a fertilizer dose.” | “Tape estimate in kilograms, not a scale, not for calves, goats or buffaloes.” |
+
+A sensible conversation can use all three, in order, without mixing their meanings. A farmer in Kiphire asks what rice yielded: the yield tool, kharif, 2016, 1.95 t/ha, from a 2014 record of 2.04. They then paste a soil test: the soil tool says which Bareilly group it resembles. They tape a cow at 188 cm girth and 197 cm length: the cattle tool says 493.7 kg. The agent may talk about what low phosphorus means in general agronomy, and about how a 490 kg animal eats more than the grazing calculator’s 400 kg default. It may not say “cluster 0 means apply this many kilos of DAP,” it may not say “the district model predicts your two-acre field will harvest 1.95 t/ha,” and it may not say “put this cow on the lorry as 493.7 kg.”
+
+The pasture-biomass model remains a fourth, separate measurement: grams of dry matter on a photographed quadrat. It does not feed the yield forest, the soil clusters, or the cattle plane, and none of those feed it. The only designed meeting point is the grazing calculator, which can take biomass grams from the pasture model and, optionally, a taped liveweight from the cattle model.
+
+---
+
+## Part E — Files and services
 
 Yield artifacts, in `AgriAssist/ML Models/crop_yield_model/`:
 
@@ -428,16 +616,30 @@ Soil artifacts, in `AgriAssist/ML Models/soil_profile_model/`:
 - `model_metadata.json` — feature order, units, threshold, source, license
 - `README.txt`
 
+Cattle artifacts, in `AgriAssist/ML Models/cattle_weight_model/`:
+
+- `cattle_weight_pipeline.joblib` — `Pipeline([('model', LinearRegression())])`, scikit-learn 1.6.1
+- `evaluation_metrics.json` — ranges, split, both models’ test scores, source DOI
+- `test_predictions.csv` — 105 held-out animals, both models’ predictions, absolute error of the selected model
+- `README.txt`
+
 Services:
 
-- Yield: `AgriAssist/yield-service`, port 8200. `GET /health`, `GET /catalog`, `POST /predict`.
-- Soil: `AgriAssist/soil-service`, port 8300. `GET /health`, `POST /predict`.
+All three tabular models, and pasture biomass, run in **one** process: `AgriAssist/ml-service` on port 8100.
 
-Both pin scikit-learn to 1.6.1 because that is the version that fit the files. AgriAssist’s API holds only the base URL of each service and posts JSON to `/predict`. The browser never loads the joblib files.
+| Path | Role |
+|---|---|
+| `GET /health` | Every model, including biomass |
+| `GET /yield/health` · `GET /yield/catalog` · `POST /yield/predict` | District yield |
+| `GET /soil/health` · `POST /soil/predict` | Soil groups |
+| `GET /cattle/health` · `POST /cattle/predict` | Cattle liveweight |
+| `GET /targets` · `POST /targets/{slug}/predict` | Pasture biomass |
+
+They pin scikit-learn to 1.6.1 because that is the version that fit the joblib files. AgriAssist’s API holds `ML_API_URL=http://127.0.0.1:8100` and posts JSON to `/yield/predict`, `/soil/predict` and `/cattle/predict`. Optional `YIELD_API_URL`, `SOIL_API_URL` and `CATTLE_API_URL` override one prefix. The browser never loads the joblib files.
 
 ---
 
-## Part E — Figures worth redrawing
+## Part F — Figures worth redrawing
 
 1. **Yield feature path.** Place, crop, season, year → keep only earlier years of that series → previous yield, three-year mean, gap, count → one-hot plus those numbers → 80-tree forest → tonnes per hectare.
 2. **Importance.** One bar chart: three-year mean 62%, previous yield 22%, everything else under 4% each. This is the slide that stops a “forecast to 2050” claim.
@@ -445,3 +647,6 @@ Both pin scikit-learn to 1.6.1 because that is the version that fit the files. A
 4. **Soil pipeline.** Six raw numbers → subtract mean, divide by standard deviation → distances to four centres → nearest centre, and a flag if that distance exceeds 1.26.
 5. **Four group portraits.** A small table per cluster: count, six medians, one sentence. Do not sort them into good and bad.
 6. **The two limits on one slide.** Yield: district, 1997–2015, rice wheat maize, later years reuse the last harvests. Soil: 257 samples, Bareilly only, descriptive groups, not a dose.
+7. **Cattle plane.** A 2-d scatter of heart girth against recorded kg, with the fitted line `kg = 6.369 × girth + 0.978 × length − 896.35` drawn through it. Annotate MAE 32.8 kg, and that the same 105 animals were used to pick linear regression over the forest.
+8. **The 188 / 197 worked example.** Recorded 407 kg, held-out line 497 kg, delivered refit 493.7 kg. This is the slide that stops “the model is a scale.”
+9. **The three tabular limits together.** Yield: not one farm. Soil: not a dose. Cattle: not a scale, not a calf.

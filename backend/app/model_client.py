@@ -3,8 +3,9 @@
 Image models get the uploaded image as multipart form data; other models get their inputs as JSON.
 Until a model's API URL is configured, a hardcoded mock response is returned instead.
 
-Biomass is a separate service. Each measurement has its own URL under that service:
-POST {BIOMASS_API_URL}/targets/{slug}/predict. Slugs must match ml-service/app/targets.py.
+All four trained models run in ml-service. Biomass measurements are
+POST {base}/targets/{slug}/predict. Yield, soil and cattle are POST {base}/{model}/predict.
+Slugs must match ml-service/app/targets.py.
 """
 from __future__ import annotations
 
@@ -142,13 +143,15 @@ async def run_model(user_id: str, model_id: str, inputs: dict) -> dict:
         return await _run_biomass(user_id, url, image, inputs)
 
     if model_id == "yield" and not url:
-        raise ModelError("Crop yield service is not configured. Set YIELD_API_URL and start yield-service.")
+        raise ModelError("Crop yield is not configured. Set ML_API_URL and start ml-service.")
     if model_id == "soil" and not url:
-        raise ModelError("Soil profile service is not configured. Set SOIL_API_URL and start soil-service.")
+        raise ModelError("Soil profile is not configured. Set ML_API_URL and start ml-service.")
+    if model_id == "cattle" and not url:
+        raise ModelError("Cattle weight is not configured. Set ML_API_URL and start ml-service.")
     if not url:
         return {**MOCK_RESPONSES[model_id], "mode": "mock", "note": MOCK_NOTE}
 
-    endpoint = f"{url.rstrip('/')}/predict" if model_id in {"yield", "soil"} else url
+    endpoint = f"{url.rstrip('/')}/predict" if model_id in {"yield", "soil", "cattle"} else url
     try:
         response = await http.post(endpoint, json=inputs, timeout=120)
     except httpx.HTTPError as exc:
@@ -161,7 +164,7 @@ async def run_model(user_id: str, model_id: str, inputs: dict) -> dict:
                 detail = body["detail"]
         except ValueError:
             pass
-        if model_id in {"yield", "soil"}:
+        if model_id in {"yield", "soil", "cattle"}:
             raise ModelError(detail)
         raise ModelError(f"Model API '{model_id}' returned {response.status_code}: {detail}")
     return response.json()

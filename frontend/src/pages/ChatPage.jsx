@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router'
 import { AnimatePresence, motion } from 'motion/react'
-import { Brain, ChartColumn, GitBranch, Leaf, PawPrint, RotateCcw, Sprout } from 'lucide-react'
+import { Brain, ChartColumn, GitBranch, Leaf, PawPrint, RotateCcw, Sprout, Weight } from 'lucide-react'
 import Composer from '../components/chat/Composer'
 import { flashFocus } from '../lib/focus'
 import { stripUIBlocks } from '../components/chat/UIBlocks'
@@ -74,6 +74,7 @@ const STARTERS = [
   { icon: PawPrint, key: 'starterGoats', tone: 'text-earth' },
   { icon: Leaf, key: 'starterLeaf', tone: 'text-danger' },
   { icon: ChartColumn, key: 'starterRice', tone: 'text-sky' },
+  { icon: Weight, key: 'starterCattle', tone: 'text-earth' },
 ]
 
 export default function ChatPage() {

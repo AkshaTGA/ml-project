@@ -1,0 +1,50 @@
+{
+  "selected_model": "Linear Regression",
+  "features_in_order": [
+    "HeartGirth",
+    "BLBodylengthcm"
+  ],
+  "target_column": "ActualBodyWeight",
+  "assumed_feature_units": {
+    "HeartGirth": "cm; confirm with source",
+    "BLBodylengthcm": "cm"
+  },
+  "assumed_target_unit": "kg; confirm with source",
+  "feature_ranges_in_dataset": {
+    "HeartGirth": {
+      "min": 171.0,
+      "max": 233.0
+    },
+    "BLBodylengthcm": {
+      "min": 177.0,
+      "max": 246.0
+    }
+  },
+  "recorded_weight_range": {
+    "min": 379.0,
+    "max": 824.0
+  },
+  "rows_used": 517,
+  "unique_animal_ids": 516,
+  "train_rows_for_evaluation": 412,
+  "test_rows": 105,
+  "split": "GroupShuffleSplit by animal ID, random_state=42",
+  "test_metrics": {
+    "Linear Regression": {
+      "MAE": 32.84558659526426,
+      "RMSE": 40.977034596685975,
+      "R2": 0.7403107458050534
+    },
+    "Random Forest": {
+      "MAE": 35.280778732487576,
+      "RMSE": 44.12823724988893,
+      "R2": 0.6988338999128935
+    }
+  },
+  "model_selection_note": "The same held-out set was used to compare two models and select the final model.",
+  "sklearn_version": "1.6.1",
+  "dataset_source": "Morphometric Measurements and Body Weight Data of Indian Cattle Breeds for Machine Learning-Based Weight Prediction",
+  "dataset_doi": "10.17632/vhv6fph7w7.1",
+  "dataset_url": "https://data.mendeley.com/datasets/vhv6fph7w7/1",
+  "dataset_license": "CC BY 4.0"
+}

@@ -19,7 +19,7 @@ from .llm import extract_text
 
 log = logging.getLogger(__name__)
 
-# The three tools on the Tools page. Chat calls them under different names.
+# The four tools on the Tools page. Chat calls them under different names.
 MODEL_OF = {
     "biomass": "biomass",
     "predict_pasture_biomass": "biomass",
@@ -29,6 +29,8 @@ MODEL_OF = {
     "predict_crop_yield": "yield",
     "soil": "soil",
     "describe_soil_profile": "soil",
+    "cattle": "cattle",
+    "predict_cattle_weight": "cattle",
     "livestock": "livestock",
     "assess_livestock_health": "livestock",
 }
@@ -42,6 +44,8 @@ _TITLES = {
     "predict_crop_yield": "Crop yield",
     "soil": "Soil profile",
     "describe_soil_profile": "Soil profile",
+    "cattle": "Cattle weight",
+    "predict_cattle_weight": "Cattle weight",
     "livestock": "Livestock check",
     "assess_livestock_health": "Livestock check",
     "diagnose_plant_disease": "Leaf check",
@@ -92,6 +96,9 @@ def summary_for(tool: str, data: dict) -> tuple[str, str]:
     if tool in {"soil", "describe_soil_profile"}:
         label = data.get("label") or title
         return str(label), str(data.get("summary") or label)[:140]
+    if tool in {"cattle", "predict_cattle_weight"}:
+        amount = _num(data.get("prediction"))
+        return str(data.get("label") or title), f"{amount} kg" if amount else "Weight estimate"
     if tool in {"livestock", "assess_livestock_health"}:
         risk = data.get("risk_level")
         return title, f"{risk} risk" if risk else "Livestock check"
