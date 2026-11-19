@@ -9,7 +9,7 @@ export default function AuthPage({ mode }) {
   const quotes = [
     { text: t('authQ1'), lang: t('modelBiomass') },
     { text: t('authQ2'), lang: t('theAgent') },
-    { text: t('authQ3'), lang: t('modelSoil') },
+    { text: t('authQ3'), lang: t('modelCattle') },
   ]
   return (
     <div className="grid min-h-full lg:grid-cols-2">

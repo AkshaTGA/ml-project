@@ -4,7 +4,7 @@ import { useAuth } from '@clerk/react'
 import { AnimatePresence, motion } from 'motion/react'
 import {
   ArrowRight, AudioLines, Brain, ChartColumn, Check, CloudSun, Layers, MessageCircleQuestion, Mic, Sparkles,
-  Sprout,
+  Sprout, Weight,
 } from 'lucide-react'
 import { Logo } from '../components/common'
 import { LANGUAGES, useI18n } from '../lib/i18n'
@@ -106,6 +106,7 @@ const FEATURES = [
   { icon: Sprout, title: 'modelBiomass', text: 'featBiomassText', tone: 'brand', big: true },
   { icon: ChartColumn, title: 'modelYield', text: 'featYieldText', tone: 'sky' },
   { icon: Layers, title: 'modelSoil', text: 'featSoilText', tone: 'earth' },
+  { icon: Weight, title: 'modelCattle', text: 'featCattleText', tone: 'earth' },
   { icon: MessageCircleQuestion, title: 'featAgentTitle', text: 'featAgentText', tone: 'gold' },
   { icon: Mic, title: 'featTalkTitle', text: 'featTalkText', tone: 'gold', wave: true },
   { icon: Brain, title: 'featMemoryTitle', text: 'featMemoryText', tone: 'brand' },
@@ -204,7 +205,7 @@ export default function Landing() {
               </a>
             </motion.div>
             <motion.dl {...fadeUp} transition={{ ...fadeUp.transition, delay: 0.2 }} className="mt-12 grid max-w-lg grid-cols-3 gap-6">
-              {[['3', t('statModels')], ['1', t('statAgent')], ['22', t('statLangs')]].map(([n, l]) => (
+              {[['4', t('statModels')], ['1', t('statAgent')], ['22', t('statLangs')]].map(([n, l]) => (
                 <div key={l}><dt className="font-display text-3xl font-bold">{n}</dt><dd className="text-sm text-muted">{l}</dd></div>
               ))}
             </motion.dl>

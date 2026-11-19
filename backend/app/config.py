@@ -102,13 +102,27 @@ SARVAM_API_KEY = os.getenv("SARVAM_API_KEY", "")
 SARVAM_STT_MODEL = os.getenv("SARVAM_STT_MODEL", "saaras:v3")
 SARVAM_TTS_MODEL = os.getenv("SARVAM_TTS_MODEL", "bulbul:v3")
 
-# Deployed model API endpoints. A model with no URL returns a hardcoded mock response.
-# Biomass is the base URL of ml-service, not a single predict route. Each measurement is
-# POST {BIOMASS_API_URL}/targets/{slug}/predict.
+# Unified ml-service. One process on ML_API_URL, one path per model:
+#   POST {ML_API_URL}/targets/{slug}/predict
+#   POST {ML_API_URL}/yield/predict
+#   POST {ML_API_URL}/soil/predict
+#   POST {ML_API_URL}/cattle/predict
+# BIOMASS_API_URL / YIELD_API_URL / SOIL_API_URL / CATTLE_API_URL override a single prefix.
+def _model_url(env_name: str, suffix: str = "") -> str:
+    specific = (os.getenv(env_name) or "").strip().rstrip("/")
+    if specific:
+        return specific
+    base = (os.getenv("ML_API_URL") or "").strip().rstrip("/")
+    if not base:
+        return ""
+    return f"{base}{suffix}"
+
+
 MODEL_URLS = {
-    "biomass": os.getenv("BIOMASS_API_URL", ""),
-    "yield": os.getenv("YIELD_API_URL", ""),
-    "soil": os.getenv("SOIL_API_URL", ""),
+    "biomass": _model_url("BIOMASS_API_URL"),
+    "yield": _model_url("YIELD_API_URL", "/yield"),
+    "soil": _model_url("SOIL_API_URL", "/soil"),
+    "cattle": _model_url("CATTLE_API_URL", "/cattle"),
 }
 # Multipart field name the biomass API expects the image under.
 BIOMASS_IMAGE_FIELD = os.getenv("BIOMASS_IMAGE_FIELD", "image")

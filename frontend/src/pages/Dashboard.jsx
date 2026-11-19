@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link, useNavigate } from 'react-router'
 import {
   AlertTriangle, ArrowUp, Camera, ChartColumn, CloudDrizzle, CloudFog, CloudLightning, CloudRain, CloudSnow, CloudSun, Droplets, IndianRupee, Info,
-  Layers, MapPin, MessageSquare, Sprout, Sun, Thermometer, Wind,
+  Layers, MapPin, MessageSquare, Sprout, Sun, Thermometer, Weight, Wind,
 } from 'lucide-react'
 import { FarmScene } from '../components/FarmScene'
 import { VoiceField } from '../components/common'
@@ -163,6 +163,7 @@ export default function Dashboard() {
     { id: 'biomass', icon: Sprout, name: t('modelBiomass'), hint: t('modelBiomassHint'), tint: 'bg-brand text-white' },
     { id: 'yield', icon: ChartColumn, name: t('modelYield'), hint: t('modelYieldHint'), tint: 'bg-brand-soft text-brand-strong' },
     { id: 'soil', icon: Layers, name: t('modelSoil'), hint: t('modelSoilHint'), tint: 'bg-sand text-sand-ink' },
+    { id: 'cattle', icon: Weight, name: t('modelCattle'), hint: t('modelCattleHint'), tint: 'bg-gold-soft text-earth' },
   ]
   const actions = [
     { icon: Sprout, label: t('checkPasture'), tint: 'text-brand-strong', state: { prompt: t('pasturePrompt') } },
@@ -195,9 +196,9 @@ export default function Dashboard() {
             </div>
             <Link to="/app/models" className="text-sm font-semibold text-brand">{t('farmTools')}</Link>
           </div>
-          <div className="grid gap-3 lg:grid-cols-3">
+          <div className="grid gap-3">
             <Link to="/app/models?model=biomass"
-              className="pasture-panel flex flex-col justify-between rounded-3xl p-6 text-white transition hover:-translate-y-0.5 hover:shadow-xl lg:col-span-2">
+              className="pasture-panel flex flex-col justify-between rounded-3xl p-6 text-white transition hover:-translate-y-0.5 hover:shadow-xl">
               <span className="text-[11px] font-bold tracking-[0.16em] uppercase text-[var(--c-straw)]">{t('flagshipModel')}</span>
               <span className="mt-6">
                 <Sprout size={28} />
@@ -205,7 +206,7 @@ export default function Dashboard() {
                 <span className="mt-1 block max-w-md text-sm text-white/80">{t('modelBiomassBlurb')}</span>
               </span>
             </Link>
-            <div className="grid gap-3">
+            <div className="grid gap-3 md:grid-cols-3">
               {models.filter((m) => m.id !== 'biomass').map(({ id, icon: Icon, name, hint, tint }) => (
                 <Link key={id} to={`/app/models?model=${id}`}
                   className="flex items-center gap-4 rounded-3xl border border-line bg-surface p-4 transition hover:-translate-y-0.5 hover:border-brand/40 hover:shadow-lg">

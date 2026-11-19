@@ -176,6 +176,34 @@ function SoilResult({ data }) {
   )
 }
 
+function CattleResult({ data }) {
+  const { t } = useI18n()
+  const stats = [
+    ['heart_girth', t('field_heart_girth')],
+    ['body_length', t('field_body_length')],
+  ]
+  return (
+    <div>
+      <Head title={data.label || t('modelCattle')} mode={data.mode} />
+      <div className="text-4xl font-bold tabular-nums">
+        {Number(data.prediction).toFixed(1)}
+        <span className="ml-1 text-base font-semibold text-muted">kg</span>
+      </div>
+      <p className="text-xs text-muted">{data.units || t('kgLiveweight')}</p>
+      {data.unusual && <p className="mt-2 text-xs text-gold">{t('outsideRange')}</p>}
+      <div className="mt-3 grid grid-cols-2 gap-2">
+        {stats.map(([key, label]) => (
+          <div key={key} className="rounded-2xl bg-surface-2 px-3 py-2">
+            <div className="text-[11px] text-muted">{label}</div>
+            <div className="font-semibold tabular-nums">{data[key] ?? '–'} cm</div>
+          </div>
+        ))}
+      </div>
+      <Note>{data.note}</Note>
+    </div>
+  )
+}
+
 function LivestockResult({ data }) {
   const { t } = useI18n()
   const risk = { high: t('highRisk'), medium: t('mediumRisk'), low: t('lowRisk') }[data.risk_level] || t('mediumRisk')
@@ -321,6 +349,7 @@ const BY_KEY = {
   crop: CropResult, recommend_crop: CropResult,
   yield: YieldResult, predict_crop_yield: YieldResult,
   soil: SoilResult, describe_soil_profile: SoilResult,
+  cattle: CattleResult, predict_cattle_weight: CattleResult,
   livestock: LivestockResult, assess_livestock_health: LivestockResult,
   diagnose_plant_disease: DiseaseResult, get_mandi_prices: MandiResult,
   estimate_grazing_days: GrazingResult, web_search: SearchResult, get_weather: WeatherResult,

@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { motion } from 'motion/react'
 import {
   BarChart3, Brain, ChartColumn, Check, ChevronDown, CloudSun, Globe, History, IndianRupee, Layers, Lightbulb, PawPrint, PenLine, Save, Search,
-  Sprout, Stethoscope, Timer, UserCog, Wheat, Wrench, X,
+  Sprout, Stethoscope, Timer, UserCog, Weight, Wheat, Wrench, X,
 } from 'lucide-react'
 import { useI18n } from '../../lib/i18n'
 import { useVerboseSteps } from '../../lib/prefs'
@@ -15,6 +15,7 @@ const SIMPLE_STEP = {
   recommend_crop: 'checkingCrop',
   predict_crop_yield: 'checkingYield',
   describe_soil_profile: 'checkingSoil',
+  predict_cattle_weight: 'checkingCattle',
   assess_livestock_health: 'checkingAnimal',
   estimate_grazing_days: 'checkingGrazing',
   get_mandi_prices: 'checkingPrices',
@@ -33,6 +34,7 @@ export const TOOL_INFO = {
   recommend_crop: { icon: Wheat, label: 'toolCrop', active: 'toolCropOn', args: (a) => [`N${a.nitrogen}`, `P${a.phosphorus}`, `K${a.potassium}`, a.ph != null && `pH ${a.ph}`].filter(Boolean).join(' ') },
   predict_crop_yield: { icon: ChartColumn, label: 'toolYield', active: 'toolYieldOn', args: (a) => [a.crop, a.season, a.district, a.year].filter(Boolean).join(' · ') },
   describe_soil_profile: { icon: Layers, label: 'toolSoil', active: 'toolSoilOn', args: (a) => [`pH ${a.ph}`, a.n != null && `N ${a.n}`].filter(Boolean).join(' · ') },
+  predict_cattle_weight: { icon: Weight, label: 'toolCattle', active: 'toolCattleOn', args: (a) => [a.heart_girth != null && `${a.heart_girth} cm`, a.body_length != null && `${a.body_length} cm`].filter(Boolean).join(' · ') },
   assess_livestock_health: { icon: PawPrint, label: 'toolAnimal', active: 'toolAnimalOn', args: (a) => [a.species, a.body_temperature != null && `${a.body_temperature}°C`].filter(Boolean).join(' · ') },
   estimate_grazing_days: { icon: Timer, label: 'toolGrazing', active: 'toolGrazingOn', args: (a) => [a.num_animals != null && `${a.num_animals}`, a.paddock_area_ha != null && `${a.paddock_area_ha} ha`].filter(Boolean).join(' · ') },
   get_mandi_prices: { icon: IndianRupee, label: 'toolMandi', active: 'toolMandiOn', args: (a) => [a.commodity, a.district, a.state].filter(Boolean).join(', ') },
@@ -248,7 +250,7 @@ function Steps({ message }) {
   )
 }
 
-const SHOW_RESULT = new Set(['predict_pasture_biomass', 'diagnose_plant_disease', 'recommend_crop', 'predict_crop_yield', 'describe_soil_profile', 'assess_livestock_health', 'estimate_grazing_days', 'get_mandi_prices', 'get_weather'])
+const SHOW_RESULT = new Set(['predict_pasture_biomass', 'diagnose_plant_disease', 'recommend_crop', 'predict_crop_yield', 'describe_soil_profile', 'predict_cattle_weight', 'assess_livestock_health', 'estimate_grazing_days', 'get_mandi_prices', 'get_weather'])
 
 function ResultCards({ message }) {
   const tools = message.steps.filter((s) => s.type === 'tool' && s.output != null)

@@ -1,11 +1,11 @@
-"""Paths for the soil-profile clustering service."""
+"""Paths for the soil-profile clustering model."""
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DIR = ROOT.parent / "ML Models" / "soil_profile_model"
+AGRIASSIST = Path(__file__).resolve().parents[3]
+DEFAULT_DIR = AGRIASSIST / "ML Models" / "soil_profile_model"
 
 MODEL_DIR = Path(os.getenv("SOIL_MODEL_DIR", DEFAULT_DIR))
 PIPELINE_PATH = MODEL_DIR / "soil_profile_pipeline.joblib"

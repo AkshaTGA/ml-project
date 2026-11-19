@@ -1,11 +1,11 @@
-"""Paths for the district crop-yield service."""
+"""Paths for the district crop-yield model."""
 from __future__ import annotations
 
 import os
 from pathlib import Path
 
-ROOT = Path(__file__).resolve().parents[1]
-DEFAULT_DIR = ROOT.parent / "ML Models" / "crop_yield_model"
+AGRIASSIST = Path(__file__).resolve().parents[3]
+DEFAULT_DIR = AGRIASSIST / "ML Models" / "crop_yield_model"
 
 MODEL_DIR = Path(os.getenv("YIELD_MODEL_DIR", DEFAULT_DIR))
 PIPELINE_PATH = MODEL_DIR / "crop_yield_pipeline.joblib"

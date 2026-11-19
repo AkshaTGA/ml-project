@@ -5,9 +5,9 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-# app/config.py -> app -> ml-service -> AgriAssist -> ML_Project
-PROJECT_ROOT = Path(__file__).resolve().parents[3]
-DEFAULT_WEIGHTS_DIR = PROJECT_ROOT / "Biomass_prediciton"
+# app/config.py -> app -> ml-service -> AgriAssist
+AGRIASSIST = Path(__file__).resolve().parents[2]
+DEFAULT_WEIGHTS_DIR = AGRIASSIST / "ML Models" / "Biomass_prediciton"
 
 WEIGHTS_DIR = Path(os.getenv("BIOMASS_WEIGHTS_DIR", DEFAULT_WEIGHTS_DIR)).expanduser()
 
