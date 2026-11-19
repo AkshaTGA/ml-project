@@ -81,6 +81,17 @@ async def describe_soil_profile(ph: float, ec: float, oc: float, n: float, p: fl
 
 
 @tool
+async def predict_cattle_weight(heart_girth: float, body_length: float, config: RunnableConfig) -> str:
+    """Estimate cattle liveweight in kilograms from two tape measurements.
+
+    heart_girth is the chest measurement in centimetres, just behind the front legs.
+    body_length is the body length in centimetres. This is a linear estimate from Indian
+    cattle records, not a scale reading. Do not use it for calves, goats or buffaloes.
+    If the result says the measurements are unusual, say they sit outside the training range."""
+    return await _call_model(config, "cattle", {"heart_girth": heart_girth, "body_length": body_length})
+
+
+@tool
 def estimate_grazing_days(total_biomass_g: float, paddock_area_ha: float, num_animals: int,
                           avg_liveweight_kg: float = 400, quadrat_area_m2: float = 0.21,
                           residual_kg_dm_per_ha: float = 1000, intake_pct_liveweight: float = 2.5,
@@ -317,6 +328,6 @@ async def update_farm_profile(
 
 
 TOOLS = [predict_pasture_biomass, diagnose_plant_disease, predict_crop_yield,
-         describe_soil_profile,
+         describe_soil_profile, predict_cattle_weight,
          estimate_grazing_days, get_mandi_prices, get_weather, web_search, remember_fact, recall_memories,
          search_past_conversations, update_farm_profile]

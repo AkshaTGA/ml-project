@@ -9,3 +9,4 @@ python3.12 -m venv .venv
 # Native Booster API only. --no-deps skips the CUDA NCCL wheel xgboost would otherwise pull.
 .venv/bin/pip install --no-cache-dir --no-deps "xgboost>=2.1"
 echo "Installed. Start with: .venv/bin/uvicorn app.main:app --host 127.0.0.1 --port 8100"
+echo "Endpoints: /targets/{slug}/predict  /yield/predict  /soil/predict  /cattle/predict"

@@ -71,6 +71,21 @@ MODELS = [
             {"name": "k", "label": "Potassium (K)", "type": "number", "unit": "kg/ha", "min": 0, "max": 500, "default": 125},
         ],
     },
+    {
+        "id": "cattle",
+        "name": "Cattle Weight",
+        "description": "Estimates cattle liveweight from heart girth and body length. "
+                       "A tape estimate in kilograms, not a scale reading, and not for calves, goats or buffaloes.",
+        "input_type": "json",
+        "fields": [
+            {"name": "heart_girth", "label": "Heart girth", "type": "number", "unit": "cm",
+             "min": 100, "max": 300, "step": 0.5, "default": 190,
+             "help": "Tape around the chest, just behind the front legs."},
+            {"name": "body_length", "label": "Body length", "type": "number", "unit": "cm",
+             "min": 100, "max": 300, "step": 0.5, "default": 200,
+             "help": "Shoulder to pin bone, as recorded in the training set."},
+        ],
+    },
 ]
 
 MODELS_BY_ID = {m["id"]: m for m in MODELS}

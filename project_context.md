@@ -1,12 +1,14 @@
 # AgriAssist — full project context
 
-This document is the source of truth for describing the project. It has two halves that belong in one system.
+This document is the source of truth for describing the project. Read it in this order. The three layers are one product.
 
-1. **Pasture biomass model.** The model to describe is the one developed in `context.md`, and the **final architecture is the diagram in `image.jpeg`**. That diagram is the model. Earlier experiments in this document exist only to explain how that architecture was reached.
-2. **District crop yield and soil-profile clusters.** These two trained models are specified in full in `yield_and_soil_context.md`. This file says how the product uses them.
-3. **AgriAssist, the agentic product.** A multilingual website for Indian farmers and herders. A person signs in, describes their farm once, and then talks to an agent by text, voice, or photo. The agent shows its work, uses tools (including the three trained models), and remembers the farm across chats.
+1. **Machine learning.** Four trained models: pasture biomass (flagship), district crop yield, soil-profile clusters, and cattle liveweight. The biomass architecture to present is the diagram in `image.jpeg`. Yield, soil and cattle are specified in full in `yield_and_soil_context.md`. This file says what those models are, how biomass was developed, and how AgriAssist serves them.
+2. **The agent.** A LangGraph loop with thirteen tools, farm memory, voice, and a live timeline. Sections 7–13.
+3. **The website.** The React app a farmer actually opens: landing, Clerk, onboarding, home, chat, tools, settings, language. Section 14.
 
-The three trained models are pasture biomass, district yield for rice, wheat and maize, and a soil-profile grouping. AgriAssist is how a farmer uses those numbers: “how many days can this paddock feed my animals?”, “what did this district yield?”, “which group does this soil test sit with?”
+There is no crop-recommender model and no livestock-health model.
+
+The four trained models are pasture biomass, district yield for rice, wheat and maize, a soil-profile grouping, and cattle liveweight. AgriAssist is how a farmer uses those numbers: “how many days can this paddock feed my animals?”, “what did this district yield?”, “which group does this soil test sit with?”, “what liveweight does this girth and length imply?”
 
 ---
 
@@ -14,19 +16,19 @@ The three trained models are pasture biomass, district yield for rice, wheat and
 
 **AgriAssist** is an agentic AI agronomist and veterinary helper for Indian farmers, herders, mixed farms, agribusinesses, and agriculture students.
 
-A farmer does not want a model score. They want a decision: graze or rest the field, spray or wait, sell the crop or hold it, call a vet or watch the animal. AgriAssist keeps the farm’s facts (place, land, crops, animals, soil, irrigation, goals) and answers in the language the person just used. When the question needs a measurement, a price, or the weather, the agent calls a tool instead of guessing. When the question is about a pasture photo, it runs the biomass model in section 5. When the question is a district rice, wheat or maize yield, it runs the yield model. When the question is a soil test, it runs the soil-profile model. It then explains the result in farming terms.
+A farmer does not want a model score. They want a decision: graze or rest the field, spray or wait, sell the crop or hold it, call a vet or watch the animal. AgriAssist keeps the farm’s facts (place, land, crops, animals, soil, irrigation, goals) and answers in the language the person just used. When the question needs a measurement, a price, or the weather, the agent calls a tool instead of guessing. When the question is about a pasture photo, it runs the biomass model in section 5. When the question is a district rice, wheat or maize yield, it runs the yield model. When the question is a soil test, it runs the soil-profile model. When the question is two tape measurements of a cow, it runs the cattle liveweight model. It then explains the result in farming terms.
 
 The product is a web app that works in a phone browser. It is an ML course project whose claims are:
 
 - a pasture-biomass estimator built for the CSIRO biomass problem, with the final architecture in `image.jpeg`;
-- a district yield model for rice, wheat and maize, and a four-group soil-profile model, both specified in `yield_and_soil_context.md`;
+- a district yield model for rice, wheat and maize, a four-group soil-profile model, and a cattle liveweight tape model;
 - an agent that puts those models, and the rest of a farm’s daily decisions, into one conversation that remembers the farm.
 
-Public framing on the landing page: “The AI expert every farmer deserves.” The rotating word in the headline is farmer in several Indian languages (farmer, किसान, शेतकरी, ਕਿਸਾਨ, விவசாயி, రైతు, herder, ಕೃಷಿಕ, কৃষক). The three headline numbers are **22 languages by voice**, **12 agent tools**, and **farm memory that persists**.
+Public framing on the landing page: “The AI expert every farmer deserves.” The rotating word in the headline is farmer in several Indian languages (farmer, किसान, शेतकरी, ਕਿਸਾਨ, விவசாயி, రైతు, herder, ಕೃಷಿಕ, কৃষক). The three headline numbers are **22 languages by voice**, **13 agent tools**, and **farm memory that persists**.
 
 ---
 
-## 2. The two problems, and why they are one project
+## 2. The problems, and why they are one project
 
 ### 2.1 Pasture biomass (CSIRO)
 
@@ -57,7 +59,13 @@ The same person who needs a biomass number also needs, often in the same week:
 
 A generic chatbot fails this because it does not know the farm, it invents prices, and it answers in the wrong language. AgriAssist is the layer that holds the farm, calls the biomass model and the other tools, and answers in the person’s own words.
 
+### 2.3 Weighing a cow without a scale
+
+A herder who cannot put an animal on a weighbridge still needs a liveweight: for sale, for dose, for how much that animal will eat tomorrow. Two tapes — heart girth behind the front legs, and body length — are the measurements this project actually trained on. The model in section 5.11 turns those centimetres into kilograms. It is a line through 517 Indian cattle rows, not a certified scale, and it is not a substitute for a veterinarian.
+
 ---
+
+# Part I — Machine learning
 
 ## 3. Biomass data, targets, and score
 
@@ -400,122 +408,82 @@ The four numbers returned to the agent and the farmer are pasture kg DM/ha, avai
 
 ---
 
-## 6. AgriAssist as a product
 
-### 6.1 Who it is for
+### 5.8 What AgriAssist currently serves for biomass
 
-Onboarding asks which description fits:
+Section 5 is the architecture to describe as the flagship model: two halves, shared ResNet-50, 12-d green block, 4108-d, five XGBoost heads, one photo, five gram values.
 
-| Stored role | What the person sees as the choice | Hint |
-|---|---|---|
-| `farmer` | Farmer | I grow crops |
-| `herder` | Herder / dairy | I raise animals |
-| `mixed` | Both | Crops and animals |
-| `agribusiness` | Agri business | Inputs, trading, FPO |
-| `student` | Student / researcher | Learning and research |
+The process that is running today, `ml-service`, is still the **experiment A** inference path from `Biomass_prediciton/run.py`:
 
-The rest of the product does not branch into five different apps. The role is part of the profile the agent reads, so a herder is not given a sowing plan as the first answer, and a student can still ask research-style questions.
+- one RGB photo, resized as a single 224×224 square (the wide two-half geometry is not split at serve time);
+- one 2048-d ResNet-50 embedding plus four green statistics computed on the original pixels = **2052-d**;
+- **one** XGBoost model per HTTP call, chosen by the URL slug (`/targets/dry-clover/predict`, `dry-dead`, `dry-green`, `dry-total`, `gdm`);
+- Grad-CAM on ResNet `layer4`, using the dot product of the embedding with that model’s `pred_contribs` on the 2048 embedding columns as the scalar score, so the heatmap changes with the measurement the person picked.
 
-### 6.2 A session, from the outside
+The farmer still sees five named measurements, because the Tools page and the agent can call the five slugs. They are five requests sharing one backbone in process memory, not one 4108-d forward pass. When a slide shows `image.jpeg`, say that is the flagship architecture. When a slide shows the live Tools page, say the running service scores one target per photo post and returns a Grad-CAM overlay for that target.
 
-1. **Landing.** The person sees the product, the language marquee, the six capabilities, and a looping demo of the agent working in Hindi on a wheat leaf (recalled memories → leaf doctor → weather → a spoken-style answer that names yellow rust, Thursday rain, and a morning spray).
-2. **Sign in / sign up** with Clerk. The marketing line on the auth screen is: ask in your language, get advice that remembers your farm.
-3. **Onboarding**, five steps, about a minute, skippable where a step does not apply. Until this is finished, the app routes the person back to onboarding. “Redo farm setup” in Settings runs the same flow again.
-4. **Home.** Today’s date, a greeting with their name, local weather and a 7-day strip if a location exists, alerts, mandi prices for up to three of their crops, recent questions, and one-tap actions.
-5. **Chat.** The main surface. Text, a photo, a voice typing mic on every field, or a full hands-free voice mode.
-6. **Tools.** Three trained model tools that can be run without a conversation: pasture biomass, crop yield, and soil profile. Each keeps its own history. A run the agent starts from a chat also appears in that tool’s history, marked as from chat.
-7. **My Farm / Settings.** Profile, memory, how the assistant should talk, language and voice.
+Negative gram values are not physically meaningful. The live service returns the model’s number; the agent should not tell a farmer the paddock has minus clover.
 
-The app shell is a phone-friendly sidebar: new question, home, ask the assistant, my farm, tools, settings, search over past questions, and the question list grouped into recent, this week, and earlier. A language control sits at the bottom of the sidebar.
+### 5.9 District crop yield (summary)
 
-### 6.3 Onboarding, field by field
+Full artifact-level context: `yield_and_soil_context.md`, Part A.
 
-Steps, in order: **Language → About you → Location → Your farm → Goals.**
+A random forest (80 trees, scikit-learn 1.6.1) predicts district yield in tonnes per hectare for **rice, wheat and maize**. Inputs the person chooses: state, district, crop, season, year. The service then builds four history features from harvests **strictly before** that year, for that same series: previous yield, mean of the last three, years since the previous record, how many earlier records exist. Categories are one-hot encoded.
 
-**Language.** One of the 11 interface languages in section 11. Choosing it switches the interface immediately. The agent can still answer in a different language later if the person writes or speaks in one.
+The evaluation year is 2015. On 155 held-out district-crop-seasons, the forest’s MAE is 0.675 t/ha and the three-year-mean baseline’s MAE is 0.674. The forest does not beat “repeat the recent mean” on average absolute error. About 85% of impurity importance sits on `historical_mean_3` and `previous_yield`. Later years (2016–2050) are allowed; they mostly reuse the last recorded harvests. The number is a district estimate, not one farm.
 
-**About you.** Name (typed, kept exactly as typed). Role, one of the five above.
+### 5.10 Soil-profile clusters (summary)
 
-**Location.** A place search (village, town, or district) or “use my current location”. The chosen place is geocoded to latitude and longitude. Those coordinates are what weather, alerts, and “prices near me” use. The display string (“Kanadiya, Madhya Pradesh”) is stored as the person selected it, not translated later.
+Full artifact-level context: `yield_and_soil_context.md`, Part B.
 
-**Farm.**
+A StandardScaler and 4-cluster KMeans, scikit-learn 1.6.1, fit on **257 Bareilly (Uttar Pradesh)** soil tests (AgriNet, DOI 10.17632/c7tr9j78td.1, CC BY 4.0). Six measurements in order: pH, EC (millimhos/cm), organic carbon (%), N, P, K (kg/ha). The product shows the cluster id, a one-sentence description of that group, that group’s medians, and a flag when the scaled distance to the nearest centre exceeds 1.260 (the 95th percentile on the training rows). Clusters are descriptive groups. They are not fertility grades and not a fertilizer dose. The table is one district; “unusual” often means “not like Bareilly.”
 
-- Land area as a number, and a unit: acre, bigha, or hectare.
-- Crops, multi-select, plus a free-text “other crop”. The offered set is wheat, rice, maize, cotton, sugarcane, soybean, mustard, chickpea, onion, tomato, potato, banana, mango, vegetables, millets, groundnut, pasture/fodder, fruits. A crop the person types (for example “Bhindi”) is stored as they typed it.
-- Animals, with a count: cows, buffaloes, goats, sheep, poultry.
-- Irrigation, one of: rainfed, canal, borewell/tubewell, drip, sprinkler, pond/tank.
-- Soil, one of: alluvial, black (cotton), red, laterite, sandy, clay, loamy, or don’t know.
+### 5.11 Cattle liveweight
 
-**Goals.** Toggles plus a free-text box: increase yield, reduce input costs, better market prices, animal health, organic farming, save water, pest and disease control. The free text is the place for the real problem (“wheat yield dropped last year and the cows give less milk in summer”).
+Full artifact-level context: `yield_and_soil_context.md`, Part C.
 
-Nothing in onboarding is sent to the biomass model. It becomes the profile the agent reads on every later turn.
+A **linear regression** on two tape measurements, scikit-learn 1.6.1, fit on **517 Indian cattle rows** (516 unique animal IDs) from Wasatkar et al., Mendeley Data, DOI 10.17632/vhv6fph7w7.1, CC BY 4.0. Features in order: `HeartGirth`, `BLBodylengthcm`. Target: `ActualBodyWeight`.
 
-### 6.4 Home
+Split: `GroupShuffleSplit` by animal ID, `random_state=42`, 412 train / 105 test. On that test, linear regression beat a random forest (MAE 32.85 kg vs 35.28 kg, R² 0.74 vs 0.70). The same 105 animals were used to pick the model and to publish those scores. The delivered joblib was then **refit on all 517 rows**.
 
-- Greeting uses the saved name. The date line is the person’s locale.
-- Ask box: type or dictate, then the message opens a chat.
-- Four actions that open a chat already started:
-  - **Crop advice** — “What should I do for my crops this week? Keep it short and practical.”
-  - **Scan a leaf** — opens the composer ready for a photo.
-  - **Weather** — “How is the weather on my farm this week, and what should I do in the field?”
-  - **Mandi prices** — “What are today’s mandi prices for my crops? Should I sell now or wait?”
-- **Weather panel.** If the profile has coordinates, Open-Meteo supplies current temperature, humidity, precipitation, wind, and a weather code, plus seven days of max/min temperature, precipitation sum, precipitation probability, and weather code. The panel shows today’s temperature, the condition, humidity, wind, rain, and a seven-column forecast. If there is no location, the panel asks the person to add one.
-- **Alerts**, derived only from that forecast and the profile, not from an LLM:
-  - Heavy rain: any of the next 3 days has at least 10 mm. “Postpone pesticide/fertiliser spraying and keep field drainage clear.”
-  - Dry and warm: the next 2 days are under 20% chance of rain and today is above 30°C. “Good spraying window. Check soil moisture and plan irrigation.”
-  - Heat: any day at or above 38°C. If the profile has animals, shade and extra water plus evening irrigation. If not, evening irrigation and mulch.
-  - Frost: any night at or below 4°C. Evening light irrigation and smoke at night.
-  - If none of these fire, the panel says the next few days are clear.
-- **Mandi strip.** Up to the first three crops on the profile. For each, the latest Agmarknet prices, the average of available modal prices, and up to three markets. Tapping a row asks the agent whether to sell now or wait. Prices are rupees per quintal.
-- **Farm card.** The first crop, or the first animal count, as the headline, with land, soil, irrigation, and stock underneath. Tapping asks “How is my {crop} doing, and what should I do next?”
-- **Recent questions.** The latest chats.
+The plane in the saved file:
 
-### 6.5 Tools page
+```
+kg = 6.369060437473909 × heart_girth_cm
+   + 0.9779800481781072 × body_length_cm
+   − 896.3485387466278
+```
 
-Three cards.
+Heart girth dominates: 10 cm of girth ≈ 64 kg; 10 cm of length ≈ 10 kg. A checked pair: 188 cm girth, 197 cm length → **493.7 kg** from the delivered file (the held-out CSV said 496.97 kg for the earlier fit; recorded scale weight on that row was 407 kg). Typical miss ~33 kg on animals around 590 kg.
 
-**Pasture biomass.** The person gives a top-down photo of the sample area. The photo is the wide, two-half frame the model expects. The model in section 5 runs once and returns all five gram values. The page keeps every run: thumbnail, the five numbers, when it was run, and whether the agent started it from a chat. A run can be deleted. The whole history of this tool can be cleared. **Ask what this means** opens a chat with a short question (“Explain this in simple words and tell me what I should do”) and a small card pointing at that run. The chat bubble shows the card, not a dump of JSON. The agent also receives the original photo so it can talk about what is in the frame.
+Training ranges: girth 171–233 cm, length 177–246 cm, recorded weight 379–824 kg. The service flags `unusual` when a tape or the predicted kg sits outside those ranges, and still returns the number. It is not a certified scale. It is not for calves, goats or buffaloes. Breed, age and sex are not in the workbook. A sick animal is a prose answer plus a veterinarian. There is no livestock-health model.
 
-**Crop yield.** State, district, crop (rice, wheat or maize), season, and year. The service builds the historical features itself from recorded harvests strictly before that year, for the same district, crop and season. The card shows tonnes per hectare, the previous harvest, the mean of the last three records, how many years since that record, and how many earlier records exist. The form only offers crop–season pairs that district actually recorded. The year control runs from 1998 to 2050 and starts at 2016. A year after 2015 still runs, and it reuses the last recorded harvests; it is not a trend forecast. History, delete, clear, and “ask what this means” work the same way. The full model is in `yield_and_soil_context.md`.
+### 5.12 One ML process, four paths
 
-**Soil profile.** Six lab numbers: pH, electrical conductivity in millimhos/cm, organic carbon in percent, and N, P, K in kg/ha. The model assigns one of four clusters learned from 257 Bareilly samples, shows that group’s median for each nutrient, and flags a sample that sits farther from every centre than 95% of the training rows. The result is a descriptive group. It is not a fertility grade and not a fertilizer dose. The full model is in `yield_and_soil_context.md`.
+The four models run in **`AgriAssist/ml-service`**, one FastAPI process, port **8100**. Each model has its own URL. AgriAssist’s API holds `ML_API_URL=http://127.0.0.1:8100` and derives:
 
-Runs started by the person on this page and runs started by the agent in chat share one history per tool. A chat run is badged “from chat” and can jump back to that message.
+| Model | Path AgriAssist posts |
+|---|---|
+| Biomass | `{ML_API_URL}/targets/{slug}/predict` (multipart photo) |
+| Yield | `{ML_API_URL}/yield/predict` (JSON) |
+| Soil | `{ML_API_URL}/soil/predict` (JSON) |
+| Cattle | `{ML_API_URL}/cattle/predict` (JSON) |
 
-### 6.6 Settings
+`GET /health` reports all four. If one set of weights is missing, the others still serve. Optional `BIOMASS_API_URL`, `YIELD_API_URL`, `SOIL_API_URL`, `CATTLE_API_URL` override a single prefix. Yield, soil and cattle have **no mock**: an empty URL is an error. Biomass may still return a hardcoded mock if its URL is empty. The browser never loads a joblib or an XGBoost JSON.
 
-Four tabs.
+There used to be four processes (biomass :8100, yield :8200, soil :8300, cattle :8400). That split is retired. Engines live under `ml-service/app/` (`engine.py` for biomass, `yield_model/`, `soil/`, `cattle/`).
 
-**Farm profile.** Every onboarding field, editable. Known choices (role, unit, soil, irrigation, a crop from the offered list, an animal type) are shown in the interface language. The edit box always contains the stored value, so saving cannot overwrite a stored “Bhindi” or a stored place name with a translation. There is a “redo farm setup” path back through onboarding.
+### 5.13 What is not a trained model in this product
 
-**Memory.** Explained in full in section 9. The screen shows the profile as the structured long-term record, the single long-term summary, notes that have been noticed once but are not yet long-term, and the short-term summaries of recent conversations. The person can search, edit, delete, and clear what the agent learned. Clearing learned memory does not delete the profile or the chats.
-
-**Assistant style.** A free-text instruction box, 1500 characters, plus chips that insert a sentence:
-
-- Keep answers short and to the point.
-- Explain simply, like I’m new to farming.
-- Use local units like bigha and quintal.
-- Always suggest an organic option first.
-- Reply in Hinglish (Hindi in English letters).
-- Give approximate costs in rupees.
-- Use step-by-step lists.
-
-These sentences are **user content**. They are written into the instruction box in the current language and then stored as whatever is in the box. They are not a hidden mode flag.
-
-The screen also explains the order of instructions, so the person knows what they can and cannot override:
-
-1. AgriAssist’s safety rules and tool rules. Fixed.
-2. The style instructions above.
-3. The farm profile, memories, and recent chats.
-4. The message they just sent.
-
-Style changes tone, language, and format. It cannot turn off safety advice or stop the agent from using tools.
-
-**Language and voice.** App language is the interface. Reply-and-voice language is the default for speech and for messages that have no language of their own (a photo with no caption, a bare number). If the person writes a clear language, the agent follows the message, not this default. Voice is covered in section 10. Two voice slots: the voice used in hands-free conversation, and the voice used when they tap the speaker on a written answer. Each can be previewed. Speakers are the Sarvam Bulbul set, men and women, including Shubh as the default.
-
-There is also a control, stored on the device, for how much of the agent’s work to show. Off: a short status line, then the answer. On: memories, the plan sentence, tool arguments, timings, and the model’s reasoning trace.
+- **Crop recommendation.** “What should I grow?” is answered from the profile, weather and web search.
+- **Livestock health / triage.** A sick animal is prose plus a vet.
+- **Grazing days.** The formula in 5.7. No learning.
+- **Leaf disease.** A vision call to the fast LLM with a schema, not a separate classifier.
+- **Embeddings.** `paraphrase-multilingual-MiniLM-L12-v2` is a local sentence encoder for memory search, not a chat model.
 
 ---
+
+# Part II — The agentic system
 
 ## 7. System shape
 
@@ -537,9 +505,7 @@ Phone browser
         ├── fast LLM: memory reflection, explicit “remember this”, leaf-diagnosis card
         ├── local embeddings (fastembed, multilingual MiniLM, 384-d)
         ├── Sarvam: speech to text, text to speech
-        ├── biomass model of section 5
-        ├── yield-service: district rice, wheat and maize yield
-        ├── soil-service: four-group soil profile
+        ├── ml-service :8100 — biomass `/targets/{slug}/predict`, yield `/yield/predict`, soil `/soil/predict`, cattle `/cattle/predict`
         ├── Open-Meteo weather and geocoding
         ├── data.gov.in Agmarknet mandi prices
         └── web search (Tavily if configured, otherwise DuckDuckGo)
@@ -553,7 +519,7 @@ A chat turn is a graph:
 START → load_context → agent ⇄ tools → END
 ```
 
-`load_context` loads the profile, the long-term summary, the last three other chat summaries, and this chat’s own summary. `agent` is the main LLM with the twelve tools bound. Two of those tools are the trained yield and soil models. There is no crop-recommender model and no livestock-triage model. If the model calls tools, the tool node runs them (parallel calls run together) and control returns to the agent. The loop stops when the agent sends a final answer with no tool call. Recursion limit is 30, which is far above a normal turn of one to three tool rounds.
+`load_context` loads the profile, the long-term summary, the last three other chat summaries, and this chat’s own summary. `agent` is the main LLM with the thirteen tools bound. Four of those tools are the trained biomass, yield, soil and cattle models. There is no crop-recommender model and no livestock-triage model. If the model calls tools, the tool node runs them (parallel calls run together) and control returns to the agent. The loop stops when the agent sends a final answer with no tool call. Recursion limit is 30, which is far above a normal turn of one to three tool rounds.
 
 Memory reflection is **not** a node in this loop. It runs after the answer has already been streamed, so it never delays the reply. If the person closes the tab mid-answer, the run still finishes on the server and the answer and the reflection are saved.
 
@@ -563,7 +529,7 @@ Embeddings never call an API. `fastembed` loads `sentence-transformers/paraphras
 
 ---
 
-## 8. The twelve tools
+## 8. The thirteen tools
 
 The agent is instructed to use tools instead of guessing, and to call independent tools in parallel (weather and prices together, for example). It must not invent prices, schemes, doses it does not know, or measurements.
 
@@ -571,7 +537,7 @@ The agent is instructed to use tools instead of guessing, and to call independen
 
 When the person sends a photo of pasture or grass, or asks whether a paddock has enough feed.
 
-The photo is the input of the architecture in section 5. The tool returns the five gram-per-quadrat values (`Dry_Clover_g`, `Dry_Dead_g`, `Dry_Green_g`, `GDM_g`, `Dry_Total_g`), the units, and the run id. The agent then explains them in words: how much is green, how much is clover, how much is dead, what the total means for grazing. If the farm has animals and an area, the next tool is the grazing calculator, using `Dry_Total_g` or, if the question is specifically about live feed, `GDM_g`.
+The photo is the input of the architecture in section 5. On the live service the tool posts one slug and returns that gram value, Grad-CAM, and the four green statistics (section 5.8). The five names are still the five measurements. The architecture in section 5 is what to draw as the flagship model. The agent then explains them in words: how much is green, how much is clover, how much is dead, what the total means for grazing. If the farm has animals and an area, the next tool is the grazing calculator, using `Dry_Total_g` or, if the question is specifically about live feed, `GDM_g`.
 
 The original photo is kept on the run. Later, “ask what this means” shows the agent the photo and a short brief, not the raw record.
 
@@ -603,13 +569,17 @@ When the person asks how much rice, wheat or maize a district yielded, or what a
 
 ### 8.4 `describe_soil_profile`
 
-When the person has a soil test: pH, EC, organic carbon, nitrogen, phosphorus, potassium. The soil service returns the cluster, a plain description of that group, the group medians, and whether the sample is unusually far from the training groups. The agent must not turn the cluster into a fertilizer dose. A sick animal is answered in words, with a veterinarian for anything serious. There is no livestock-health model.
+When the person has a soil test: pH, EC, organic carbon, nitrogen, phosphorus, potassium. The soil service returns the cluster, a plain description of that group, the group medians, and whether the sample is unusually far from the training groups. The agent must not turn the cluster into a fertilizer dose.
 
-### 8.5 `estimate_grazing_days`
+### 8.5 `predict_cattle_weight`
+
+When the person has two tape measurements of a cow: heart girth and body length, in centimetres. The cattle service returns a liveweight in kilograms from a linear regression fit on 517 Indian cattle rows (Wasatkar et al., DOI 10.17632/vhv6fph7w7.1). Held-out MAE was about 33 kg. The number is a tape estimate, not a scale reading. It is not for calves, goats or buffaloes. Measurements outside heart girth 171–233 cm or body length 177–246 cm are flagged. A sick animal is answered in words, with a veterinarian for anything serious. There is no livestock-health model.
+
+### 8.6 `estimate_grazing_days`
 
 The formula in section 5.7. No learning. The agent supplies the biomass grams from tool 8.1 and the herd and area from the profile or the conversation. The answer should say the residual that was assumed, because “12 grazing days” is meaningless if the person does not know that 1000 kg DM/ha was left ungrazed.
 
-### 8.6 `get_mandi_prices`
+### 8.7 `get_mandi_prices`
 
 Latest wholesale APMC (mandi) prices for a commodity, optionally filtered by state and district. Unit is rupees per quintal: minimum, maximum, and modal.
 
@@ -620,29 +590,29 @@ Source order:
 
 Results are cached for 6 hours per (commodity, state, district). The agent cites the market, the date, and the modal price, and does not invent a price when both sources fail.
 
-### 8.7 `get_weather`
+### 8.8 `get_weather`
 
 Current conditions and a 7-day forecast: temperature, rain, humidity, wind. If the person names no place, the farm’s saved coordinates are used. Otherwise the place name is geocoded (Open-Meteo geocoding, first hit) and the forecast is fetched in the local timezone. Cached for 30 minutes on a 0.01-degree grid. The agent is told to call this before any advice that depends on weather: sowing, spraying, irrigation, harvest, grazing.
 
 The dashboard uses the same weather function and the same alert rules, so the home screen and the chat do not disagree about tomorrow’s rain.
 
-### 8.8 `web_search`
+### 8.9 `web_search`
 
 For schemes, pest outbreaks, news, and anything current or uncertain. Returns up to 5 results with title, URL, and snippet. Tavily if a key exists, otherwise DuckDuckGo. The agent must cite the URLs it actually uses. In the chat UI a bare URL is rendered as a source card (decoded title and host), and the model is told to prefer a `links` visual or a markdown link with a human title, never a raw address in a bullet.
 
-### 8.9 `remember_fact`
+### 8.10 `remember_fact`
 
 Only when the person asks to remember something, or states a lasting preference or constraint that is not already in the profile or the long-term summary. One short third-person sentence. Refused, and kept only in the chat, when the text is about weather, prices, today’s symptoms, a photo result, or advice just given. The exact promotion rules are in section 9. The tool does not append a new bullet to a growing list. It asks for the single long-term summary to be rewritten with the new sentence folded in.
 
-### 8.10 `recall_memories`
+### 8.11 `recall_memories`
 
 Looks up the long-term summary. The summary is already in the system prompt, so this tool is for a deliberate search when the agent thinks something lasting was stored and is not in the lines it was given.
 
-### 8.11 `search_past_conversations`
+### 8.12 `search_past_conversations`
 
 Semantic search over earlier chats (“what did you tell me about the goat’s fever last week?”). Returns matching titles and summaries, up to 4, with a similarity score. It does not return the full old transcript unless the person opens that chat.
 
-### 8.12 `update_farm_profile`
+### 8.13 `update_farm_profile`
 
 When the person says the farm itself changed: new crop, more land, a move, different soil, a new goal, a language preference. Fields it may write: name, location name, land area, land unit, crops, irrigation, soil, goals, language. Crops must be the full current list, comma-separated, because the field is replaced rather than appended. A new location name is geocoded so weather keeps working. Livestock counts are edited on the profile screen; this tool’s field list is the one above.
 
@@ -912,7 +882,7 @@ Cached in process for 10 minutes, dropped on write. `describe(profile)` is the t
 
 `id`, `user_id`, `tool`, `title`, `summary`, `inputs` (JSON), `result` (JSON), `image_id`, `thread_id`, `message_id`, `created_at`.
 
-Written when a biomass, yield, or soil tool finishes, whether the person ran it on the Tools page or the agent ran it in chat. The names the agent uses (`predict_pasture_biomass`, `predict_crop_yield`, `describe_soil_profile`) are stored against the same tool ids as the page (`biomass`, `yield`, `soil`), so there is one history per kind of check.
+Written when a biomass, yield, soil or cattle tool finishes, whether the person ran it on the Tools page or the agent ran it in chat. The names the agent uses (`predict_pasture_biomass`, `predict_crop_yield`, `describe_soil_profile`, `predict_cattle_weight`) are stored against the same tool ids as the page (`biomass`, `yield`, `soil`, `cattle`), so there is one history per kind of check.
 
 One-line summaries: “48.7 g per quadrat”, “1.95 t/ha”, “Cluster 0”, “12 grazing days”, “₹3921 modal”, “31°C”.
 
@@ -945,25 +915,226 @@ The composer shows a standing line: AgriAssist can be wrong; check important dec
 
 ---
 
-## 14. End-to-end stories
+# Part III — The website
+
+## 14. The website
+
+This is the product a farmer opens on a phone. The agent and the models are behind it. This section is how that front-end was built, and what each screen does.
+
+### 14.1 How it was built
+
+| Choice | What it is |
+|---|---|
+| React 19 | UI. Pages are functions. Chat state lives in the page, not a global store, except the farm profile and the thread list (`AppDataProvider`). |
+| Vite | Dev server and production bundle. In development `/api` is proxied to FastAPI. A deployed site sets `VITE_API_URL`. |
+| Tailwind v4 | Utility CSS. Colours are CSS variables on `:root`, wired into `@theme inline`, so `bg-brand` and `text-earth` are the pasture palette rather than Tailwind’s defaults. |
+| React Router 8 | URL-driven screens. Lazy `import()` so a visitor downloading the landing page does not download chat, tools, or settings. |
+| Clerk | Sign-in and sign-up. The browser sends a JWT on every `/api` call. FastAPI checks it. The model never sees the token. |
+| Motion | Landing demo, onboarding steps, toasts, the voice orb. |
+| Lucide | Icons. There are no emoji in the chrome. The language marquee and Devanagari/Tamil/etc. text are real scripts, not pictures of scripts. |
+| Recharts | Only inside a chat `chart` visual. |
+| Plus Jakarta Sans + Noto Sans Devanagari | Body and display. Hindi, Marathi and the other Indic labels must render. |
+
+The app is a **phone-first website**, not a separate Android or iOS binary. The shell (sidebar, composer, tools) is built to a narrow width first. `dev:lan` serves HTTPS on the local network so a real phone can use the microphone.
+
+Auth gate: unsigned visitors see landing, `/sign-in`, `/sign-up`. Signed-in people who have not finished onboarding are sent to `/onboarding`. Everyone else gets `/app` (home), `/app/chat/:threadId?`, `/app/models`, `/app/settings`.
+
+The browser talks only to AgriAssist’s API. It never loads a joblib, never talks to port 8100, never holds the LLM key, the Sarvam key, or the Clerk secret.
+
+### 14.2 Design that was decided in development
+
+- **Palette:** straw, soil, pasture. Background `#f4efe4`, ink `#2a261c`, brand green `#3f6b3a`, gold `#b8862f`, earth `#8d5a32`. Light is the designed look; there is no dark theme.
+- **Pasture biomass is the flagship.** Landing: a large biomass card, then yield, soil and cattle beside it. Home: a full-width pasture panel, then a three-column row for the other models. Tools: biomass `col-span-3` with a Flagship badge. Copy says biomass first, the others sit beside it.
+- **Herders and farmers together.** Onboarding role, home greeting, and the agent prompt all allow animals and crops. The product is not a crop-only app with livestock bolted on.
+- **A real photograph** (`FarmScene`) on home, not an SVG illustration of a field.
+- **No emoji in the product chrome.** Status, tools and empty states use Lucide icons. (A chat visual of type `tips` may still carry an emoji if the model emits one; that is model output, not chrome.)
+- **Other** exists on onboarding crop lists and similar pickers so a typed value is not forced into a false enum.
+- **Known enums display translated, stored in English.** `labels.js` maps `Wheat` → `cropWheat`, `cows` → `animalCows`, and so on. A typed “Bhindi” is not in the map, so it stays “Bhindi” in every language. Saving a profile must write the stored English (or the raw typed string), never the translated label.
+
+
+### 14.3 Who it is for
+
+Onboarding asks which description fits:
+
+| Stored role | What the person sees as the choice | Hint |
+|---|---|---|
+| `farmer` | Farmer | I grow crops |
+| `herder` | Herder / dairy | I raise animals |
+| `mixed` | Both | Crops and animals |
+| `agribusiness` | Agri business | Inputs, trading, FPO |
+| `student` | Student / researcher | Learning and research |
+
+The rest of the product does not branch into five different apps. The role is part of the profile the agent reads, so a herder is not given a sowing plan as the first answer, and a student can still ask research-style questions.
+
+### 14.4 A session, from the outside
+
+1. **Landing.** The person sees the product, the language marquee, the six capabilities, and a looping demo of the agent working in Hindi on a wheat leaf (recalled memories → leaf doctor → weather → a spoken-style answer that names yellow rust, Thursday rain, and a morning spray).
+2. **Sign in / sign up** with Clerk. The marketing line on the auth screen is: ask in your language, get advice that remembers your farm.
+3. **Onboarding**, five steps, about a minute, skippable where a step does not apply. Until this is finished, the app routes the person back to onboarding. “Redo farm setup” in Settings runs the same flow again.
+4. **Home.** Today’s date, a greeting with their name, local weather and a 7-day strip if a location exists, alerts, mandi prices for up to three of their crops, recent questions, and one-tap actions.
+5. **Chat.** The main surface. Text, a photo, a voice typing mic on every field, or a full hands-free voice mode.
+6. **Tools.** Four trained model tools that can be run without a conversation: pasture biomass, crop yield, soil profile, and cattle liveweight. Each keeps its own history. A run the agent starts from a chat also appears in that tool’s history, marked as from chat.
+7. **My Farm / Settings.** Profile, memory, how the assistant should talk, language and voice.
+
+The app shell is a phone-friendly sidebar: new question, home, ask the assistant, my farm, tools, settings, search over past questions, and the question list grouped into recent, this week, and earlier. A language control sits at the bottom of the sidebar.
+
+### 14.5 Onboarding, field by field
+
+Steps, in order: **Language → About you → Location → Your farm → Goals.**
+
+**Language.** One of the 11 interface languages in section 10.2. Choosing it switches the interface immediately. The agent can still answer in a different language later if the person writes or speaks in one.
+
+**About you.** Name (typed, kept exactly as typed). Role, one of the five above.
+
+**Location.** A place search (village, town, or district) or “use my current location”. The chosen place is geocoded to latitude and longitude. Those coordinates are what weather, alerts, and “prices near me” use. The display string (“Kanadiya, Madhya Pradesh”) is stored as the person selected it, not translated later.
+
+**Farm.**
+
+- Land area as a number, and a unit: acre, bigha, or hectare.
+- Crops, multi-select, plus a free-text “other crop”. The offered set is wheat, rice, maize, cotton, sugarcane, soybean, mustard, chickpea, onion, tomato, potato, banana, mango, vegetables, millets, groundnut, pasture/fodder, fruits. A crop the person types (for example “Bhindi”) is stored as they typed it.
+- Animals, with a count: cows, buffaloes, goats, sheep, poultry.
+- Irrigation, one of: rainfed, canal, borewell/tubewell, drip, sprinkler, pond/tank.
+- Soil, one of: alluvial, black (cotton), red, laterite, sandy, clay, loamy, or don’t know.
+
+**Goals.** Toggles plus a free-text box: increase yield, reduce input costs, better market prices, animal health, organic farming, save water, pest and disease control. The free text is the place for the real problem (“wheat yield dropped last year and the cows give less milk in summer”).
+
+Nothing in onboarding is sent to the biomass model. It becomes the profile the agent reads on every later turn.
+
+### 14.6 Home
+
+- Greeting uses the saved name. The date line is the person’s locale.
+- Ask box: type or dictate, then the message opens a chat.
+- Four actions that open a chat already started:
+  - **Check pasture** — a prompt ready for a paddock photo.
+  - **Crop advice** — “What should I do for my crops this week? Keep it short and practical.”
+  - **Scan a leaf** — opens the composer ready for a photo.
+  - **Weather** — “How is the weather on my farm this week, and what should I do in the field?”
+  - **Mandi prices** — “What are today’s mandi prices for my crops? Should I sell now or wait?”
+- **Weather panel.** If the profile has coordinates, Open-Meteo supplies current temperature, humidity, precipitation, wind, and a weather code, plus seven days of max/min temperature, precipitation sum, precipitation probability, and weather code. The panel shows today’s temperature, the condition, humidity, wind, rain, and a seven-column forecast. If there is no location, the panel asks the person to add one.
+- **Alerts**, derived only from that forecast and the profile, not from an LLM:
+  - Heavy rain: any of the next 3 days has at least 10 mm. “Postpone pesticide/fertiliser spraying and keep field drainage clear.”
+  - Dry and warm: the next 2 days are under 20% chance of rain and today is above 30°C. “Good spraying window. Check soil moisture and plan irrigation.”
+  - Heat: any day at or above 38°C. If the profile has animals, shade and extra water plus evening irrigation. If not, evening irrigation and mulch.
+  - Frost: any night at or below 4°C. Evening light irrigation and smoke at night.
+  - If none of these fire, the panel says the next few days are clear.
+- **Mandi strip.** Up to the first three crops on the profile. For each, the latest Agmarknet prices, the average of available modal prices, and up to three markets. Tapping a row asks the agent whether to sell now or wait. Prices are rupees per quintal.
+- **Farm card.** The first crop, or the first animal count, as the headline, with land, soil, irrigation, and stock underneath. Tapping asks “How is my {crop} doing, and what should I do next?”
+- **Recent questions.** The latest chats.
+
+### 14.7 Tools page
+
+Four cards. Pasture biomass is full-width and badged Flagship. Yield, soil and cattle sit in a row under it.
+
+**Pasture biomass.** The person gives a top-down photo of the sample area. The photo is the wide, two-half frame the model expects. The person chooses which of the five measurements to predict. The live service posts that slug (section 5.8). The architecture to describe as the flagship remains section 5. The page keeps every run: thumbnail, the five numbers, when it was run, and whether the agent started it from a chat. A run can be deleted. The whole history of this tool can be cleared. **Ask what this means** opens a chat with a short question (“Explain this in simple words and tell me what I should do”) and a small card pointing at that run. The chat bubble shows the card, not a dump of JSON. The agent also receives the original photo so it can talk about what is in the frame.
+
+**Crop yield.** State, district, crop (rice, wheat or maize), season, and year. The service builds the historical features itself from recorded harvests strictly before that year, for the same district, crop and season. The card shows tonnes per hectare, the previous harvest, the mean of the last three records, how many years since that record, and how many earlier records exist. The form only offers crop–season pairs that district actually recorded. The year control runs from 1998 to 2050 and starts at 2016. A year after 2015 still runs, and it reuses the last recorded harvests; it is not a trend forecast. History, delete, clear, and “ask what this means” work the same way. The full model is in `yield_and_soil_context.md`, Part A.
+
+**Soil profile.** Six lab numbers: pH, electrical conductivity in millimhos/cm, organic carbon in percent, and N, P, K in kg/ha. The model assigns one of four clusters learned from 257 Bareilly samples, shows that group’s median for each nutrient, and flags a sample that sits farther from every centre than 95% of the training rows. The result is a descriptive group. It is not a fertility grade and not a fertilizer dose. The full model is in `yield_and_soil_context.md`, Part B.
+
+**Cattle liveweight.** Heart girth and body length in centimetres. The card shows kilograms, the two tapes, and a gold note when the measurement sits outside the training range. Defaults 190 cm and 200 cm. The full model is in `yield_and_soil_context.md`, Part C.
+
+Runs started by the person on this page and runs started by the agent in chat share one history per tool. A chat run is badged “from chat” and can jump back to that message.
+
+### 14.8 Settings
+
+Four tabs.
+
+**Farm profile.** Every onboarding field, editable. Known choices (role, unit, soil, irrigation, a crop from the offered list, an animal type) are shown in the interface language. The edit box always contains the stored value, so saving cannot overwrite a stored “Bhindi” or a stored place name with a translation. There is a “redo farm setup” path back through onboarding.
+
+**Memory.** Explained in full in section 9. The screen shows the profile as the structured long-term record, the single long-term summary, notes that have been noticed once but are not yet long-term, and the short-term summaries of recent conversations. The person can search, edit, delete, and clear what the agent learned. Clearing learned memory does not delete the profile or the chats.
+
+**Assistant style.** A free-text instruction box, 1500 characters, plus chips that insert a sentence:
+
+- Keep answers short and to the point.
+- Explain simply, like I’m new to farming.
+- Use local units like bigha and quintal.
+- Always suggest an organic option first.
+- Reply in Hinglish (Hindi in English letters).
+- Give approximate costs in rupees.
+- Use step-by-step lists.
+
+These sentences are **user content**. They are written into the instruction box in the current language and then stored as whatever is in the box. They are not a hidden mode flag.
+
+The screen also explains the order of instructions, so the person knows what they can and cannot override:
+
+1. AgriAssist’s safety rules and tool rules. Fixed.
+2. The style instructions above.
+3. The farm profile, memories, and recent chats.
+4. The message they just sent.
+
+Style changes tone, language, and format. It cannot turn off safety advice or stop the agent from using tools.
+
+**Language and voice.** App language is the interface. Reply-and-voice language is the default for speech and for messages that have no language of their own (a photo with no caption, a bare number). If the person writes a clear language, the agent follows the message, not this default. Voice is covered in section 10. Two voice slots: the voice used in hands-free conversation, and the voice used when they tap the speaker on a written answer. Each can be previewed. Speakers are the Sarvam Bulbul set, men and women, including Shubh as the default.
+
+There is also a control, stored on the device, for how much of the agent’s work to show. Off: a short status line, then the answer. On: memories, the plan sentence, tool arguments, timings, and the model’s reasoning trace.
+
+### 14.9 Landing and auth screens
+
+**Landing** is public. It is a marketing page, not a logged-in shell: flagship biomass copy, a looping agent demo, a language marquee of the 11 scripts, stats “4 trained models / 1 agent / 22 languages by voice”, then feature cards (biomass large, then yield, soil, cattle, agent, talk, memory), how-it-works, and a footer that names the four models. Headline rotation includes farmer and herder in several Indian languages.
+
+**Auth** is Clerk’s hosted sign-in and sign-up, beside three example questions. The third question is a cattle tape pair, labelled Cattle liveweight, so a herder sees their tool before they have an account.
+
+### 14.10 Chat UI (what was built)
+
+The stream protocol is section 11. This is the React side.
+
+- `ChatPage` keeps an in-memory cache of every thread opened in the session, so switching chats does not drop a stream that is still arriving.
+- Empty chat: five starters, including pasture, goats, a leaf, district rice yield, and cattle tapes.
+- `Composer`: text, mic for voice typing, photo attach (downscaled before upload), context chips, Stop, send. A standing honesty line about KVK and a vet.
+- `AgentTimeline`: one row per tool with that tool’s icon (sprout, chart, layers, weight, …), a live tenth-second timer, result cards for biomass / yield / soil / cattle / leaf / mandi / weather / grazing. Simple mode uses everyday phrases (`checkingCattle`, `checkingGrass`). Detailed mode shows arguments and the reasoning trace.
+- `Message`: markdown, `ui` visual blocks (section 11.3), reply / rewind / branch / regenerate / listen.
+- `VoiceMode`: orb, listen → agent → speak at the first finished sentence. No tables, no URL cards in that mode.
+- `ContextChip`: a saved tool run or an earlier bubble, at most three per send.
+
+### 14.11 Internationalisation (what was built)
+
+- **11 interface languages** in `i18n.jsx` (`en-IN` … `od-IN`). Voice STT covers 22.
+- **Chrome strings** live in `chrome.js` (English and Hindi are the complete dictionaries; they are kept at the same key count) plus `STRINGS` / `STEP` in `i18n.jsx`. Marathi, Punjabi, Tamil and Telugu have partial coverage. Gujarati, Bengali, Kannada, Malayalam and Odia fall back to English for missing keys. `chromeMore.js` exists for overflow keys and is currently empty.
+- Lookup order: more-dictionary, chrome, strings, step labels, then the English value, then the key itself.
+- **User-typed values are never translated.** Name, custom crop, place string, free-text goals, style instructions, chat text stay as typed.
+- **Known enums** go through `knownText()` in `labels.js`: stored English, displayed in the current language.
+- Dates on home use the locale of the selected language. The weather condition string is a chrome key, not Open-Meteo’s English description.
+
+### 14.12 Frontend files that matter
+
+| Path | What it is |
+|---|---|
+| `frontend/src/App.jsx` | Routes and auth/onboarding gates |
+| `pages/Landing.jsx` | Public marketing |
+| `pages/AuthPage.jsx` | Clerk + example questions |
+| `pages/Onboarding.jsx` | Five steps, Open-Meteo search, geolocation |
+| `pages/Dashboard.jsx` | Home: flagship pasture, yield/soil/cattle, weather, alerts, mandi |
+| `pages/ChatPage.jsx` | Thread, stream, starters |
+| `pages/ModelsPage.jsx` | Four tools, forms from the API registry, run history |
+| `pages/Settings.jsx` | Profile, memory, style, language and voice |
+| `layouts/AppLayout.jsx` | Sidebar, thread list, language switch |
+| `components/Results.jsx` | Result cards, including `CattleResult` |
+| `components/chat/*` | Timeline, composer, voice, visuals |
+| `lib/chrome.js`, `lib/i18n.jsx`, `lib/labels.js` | Interface language |
+| `lib/api.js` | JWT fetch + SSE reader |
+| `index.css` | Pasture / straw / soil tokens |
+
+---
+
+## 15. End-to-end stories
 
 These are the walks through the whole system. A presentation can use any of them as a single slide sequence.
 
-### 14.1 “Is there enough grass?”
+### 15.1 “Is there enough grass?”
 
 1. The herder opens AgriAssist. The profile already says: mixed farm, a location with coordinates, the land area, and the number of animals.
 2. They photograph the quadrat. The frame is the wide two-half pasture image.
 3. They either drop it on the Pasture biomass tool or send it in chat.
 4. Left half and right half each go through the shared ResNet-50. Two 2048-d embeddings.
 5. The twelve green statistics are computed on the left half, the right half, and the whole frame.
-6. The 4108-d vector is read by five XGBoost models. The chat or the tool page shows clover, dead, green, GDM, and total, in grams per quadrat.
+6. In the flagship architecture (section 5) the 4108-d vector is read by five XGBoost models. On the live service (section 5.8) the person picks one measurement; that slug is scored and a Grad-CAM overlay is returned. The Tools history still keeps each run with the photo.
 7. The run is saved with the photo.
 8. The agent calls `estimate_grazing_days` with `Dry_Total_g`, the paddock area converted from the profile, and the herd size. It returns kg DM/ha, available feed after the 1000 kg/ha residual and 70% utilisation, daily herd demand at 2.5% of live weight, and a number of days.
 9. The answer, in the herder’s language, leads with the action: graze for about N days, or rest the paddock. Then the reason. Then the residual that was assumed. A calculator block lets them move the animal count or the area and see the days change.
 10. If they tap “ask what this means” later, the new chat receives a chip, the five numbers, and the photo. The bubble stays small.
 11. Reflection writes a short-term summary of this conversation (“checked the north paddock, total about X g, about N grazing days”). It does **not** put the gram value into long-term memory. If the herder says “remember that I always leave this paddock to rest in April”, that sentence is eligible for the long-term summary.
 
-### 14.2 “Yellow spots on my wheat”
+### 15.2 “Yellow spots on my wheat”
 
 1. Home, or chat. They type or speak the symptom and attach a leaf photo. The landing demo is this story in Hindi: yellow spots on wheat, memories of wheat and the farm, leaf doctor, weather, then an answer that names the disease, the rain day, and a morning spray window.
 2. `diagnose_plant_disease` returns crop, disease, confidence, urgency, organic steps, chemical active ingredient and dose, prevention.
@@ -972,7 +1143,7 @@ These are the walks through the whole system. A presentation can use any of them
 5. Three follow-up chips appear: a dose for their exact area, an organic alternative, what to watch next week.
 6. The disease and the weather stay in the chat summary. They do not become long-term memory unless the same standing fact shows up in a second conversation or the person asks for it to be remembered.
 
-### 14.3 “Should I sell the onion?”
+### 15.3 “Should I sell the onion?”
 
 1. Home already shows the modal price if onion is one of the first three crops. Tapping it opens the question.
 2. `get_mandi_prices` for onion, filtered toward their state and district when those are known.
@@ -980,7 +1151,16 @@ These are the walks through the whole system. A presentation can use any of them
 4. The agent does not say “sell” from the price alone if the profile says the crop is still in the field and the weather tool says heavy rain on the harvest window. It calls weather as well.
 5. The price is ephemeral. It is in the chat summary and not in the long-term summary.
 
-### 14.4 A fact that earns its place
+### 15.4 “What does this cow weigh?”
+
+1. Tools, Cattle liveweight, or a chat starter: heart girth 188 cm, body length 197 cm.
+2. `predict_cattle_weight` posts JSON to `ml-service` `/cattle/predict`.
+3. The card shows **493.7 kg**, the two tapes, and the standing note that it is not a scale.
+4. If they typed 140 cm and 150 cm, the same card shows a gold “outside the training range” line and a much smaller kilogram number.
+5. The agent does not call this tool for a goat, a calf, or a buffalo. A sick animal is prose plus a vet.
+6. The kilogram value stays in the chat summary. It does not become long-term memory unless they ask to remember that animal.
+
+### 15.5 A fact that earns its place
 
 1. In chat one, the farmer mentions they never use synthetic pesticide on the vegetable plot. Reflection stores a candidate. The long-term summary does not change. The memory screen shows “noticed once”.
 2. In a later chat they say the same thing about the vegetables. The candidate now has two thread ids. Promotion rewrites the single summary so that preference is part of the paragraph, without copying the whole conversation.
@@ -988,7 +1168,7 @@ These are the walks through the whole system. A presentation can use any of them
 
 ---
 
-## 15. Stack, in one place
+## 16. Stack, in one place
 
 | Layer | Choice |
 |---|---|
@@ -998,9 +1178,12 @@ These are the walks through the whole system. A presentation can use any of them
 | Agent | LangGraph. `load_context → agent ⇄ tools`. Postgres checkpointer. Postgres store. |
 | Answering model | Tool-calling LLM with vision. Default family xAI Grok; Gemini, NVIDIA NIM, or Meta Muse can be selected. |
 | Fast model | Structured reflection, summary rewrite, leaf-diagnosis card. |
-| Biomass | Section 5. Shared ResNet-50, 12-d green features, 4108-d vector, five XGBoost regressors. |
-| Crop yield | `yield_and_soil_context.md`. Random forest on district history. Rice, wheat, maize. |
-| Soil profile | `yield_and_soil_context.md`. Standard scaler and 4-cluster KMeans on six lab measurements. |
+| ML service | One process, `ml-service` :8100. Biomass `/targets/{slug}/predict`, yield `/yield/predict`, soil `/soil/predict`, cattle `/cattle/predict`. |
+| Biomass (architecture) | Section 5 / `image.jpeg`. Shared ResNet-50, 12-d green features, 4108-d, five XGBoost regressors. |
+| Biomass (live service) | Section 5.8. Single 224 crop, 2052-d, one XGBoost per slug, Grad-CAM. |
+| Crop yield | `yield_and_soil_context.md` Part A. Random forest on district history. Rice, wheat, maize. |
+| Soil profile | `yield_and_soil_context.md` Part B. Standard scaler and 4-cluster KMeans. |
+| Cattle liveweight | `yield_and_soil_context.md` Part C. Linear regression on heart girth and body length. |
 | Embeddings | fastembed, paraphrase-multilingual-MiniLM-L12-v2, 384-d, local. |
 | Database | Postgres with pgvector. |
 | Voice | Sarvam Saaras v3 (listen), Bulbul v3 (speak). |
@@ -1012,7 +1195,7 @@ The interface is built for a phone browser first: the sidebar, the composer, voi
 
 ---
 
-## 16. Figures worth redrawing
+## 17. Figures worth redrawing
 
 1. **`image.jpeg` — the biomass model.** Left half and right half, shared ResNet-50, 2048-d and 2048-d, the 12-d green block, concatenation to 4108-d, five XGBoost boxes. This is the architecture slide. The file on disk is the original.
 2. **The score.** One weighted R², weights 0.1 / 0.1 / 0.1 / 0.2 / 0.5, total in the largest slice. Not five averaged scores.
@@ -1021,10 +1204,13 @@ The interface is built for a phone browser first: the sidebar, the composer, voi
 5. **The three memories.** Session transcript, per-chat summary, one long-term paragraph plus the profile. Candidates sitting between chat and long-term, needing a second conversation or an explicit “remember this”.
 6. **A turn on screen.** User bubble, timeline with tool icons, collapsed “worked for Ns”, answer with one chart or one calculator, three follow-up chips, optional “remembered” toast.
 7. **Grams to days.** Quadrat grams → kg DM/ha → subtract residual → utilisation → divide by herd daily demand.
+8. **Cattle plane.** Heart girth against kilograms, MAE 33 kg, 188/197 → 493.7 kg versus a recorded 407 kg.
+9. **One ML process.** Port 8100, four paths.
+10. **Website map.** Landing → Clerk → five-step onboarding → home with flagship pasture panel → chat timeline / tools / settings.
 
 ---
 
-## 17. Names and terms to keep consistent
+## 18. Names and terms to keep consistent
 
 - **AgriAssist** — the product.
 - **CSIRO** — the organisation behind the pasture-biomass problem.
@@ -1038,6 +1224,8 @@ The interface is built for a phone browser first: the sidebar, the composer, voi
 - **4108-d** — 2048 + 2048 + 12.
 - **District yield** — tonnes per hectare for rice, wheat or maize in one district and season, from earlier recorded harvests only.
 - **Soil cluster** — one of four descriptive groups from Bareilly samples. Not a fertility grade.
+- **Cattle liveweight** — kilograms from heart girth and body length. A tape estimate, not a scale. Not for calves, goats or buffaloes.
+- **ml-service** — the one process on port 8100 that hosts all four trained models.
 - **Long-term memory** — one summary, plus the farm profile. Not a list of facts.
 - **Candidate** — a note that has been seen and is not yet long-term.
 - **KVK** — Krishi Vigyan Kendra, the local confirmation point for serious crop advice.

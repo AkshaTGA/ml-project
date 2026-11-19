@@ -1,14 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router'
 import { motion } from 'motion/react'
-import { ChartColumn, FlaskConical, ImagePlus, Layers, MessageSquareText, Play, Sprout, Trash2 } from 'lucide-react'
+import { ChartColumn, FlaskConical, ImagePlus, Layers, MessageSquareText, Play, Sprout, Trash2, Weight } from 'lucide-react'
 import { AuthImage, Spinner } from '../components/common'
 import { flashFocus } from '../lib/focus'
 import { ModeBadge, Result } from '../components/Results'
 import { downscaleImage, useApi } from '../lib/api'
 import { useI18n } from '../lib/i18n'
 
-const ICONS = { biomass: Sprout, yield: ChartColumn, soil: Layers }
+const ICONS = { biomass: Sprout, yield: ChartColumn, soil: Layers, cattle: Weight }
 
 function defaults(model) {
   return Object.fromEntries(model.fields.filter((f) => f.type !== 'image').map((f) => [f.name, f.default ?? '']))
@@ -315,8 +315,8 @@ export default function ModelsPage() {
             const Icon = ICONS[m.id] || FlaskConical
             const active = m.id === selected
             const flagship = m.id === 'biomass'
-            const nameKey = { biomass: 'modelBiomass', yield: 'modelYield', soil: 'modelSoil' }[m.id]
-            const descKey = { biomass: 'modelBiomassDesc', yield: 'modelYieldDesc', soil: 'modelSoilDesc' }[m.id]
+            const nameKey = { biomass: 'modelBiomass', yield: 'modelYield', soil: 'modelSoil', cattle: 'modelCattle' }[m.id]
+            const descKey = { biomass: 'modelBiomassDesc', yield: 'modelYieldDesc', soil: 'modelSoilDesc', cattle: 'modelCattleDesc' }[m.id]
             return (
               <button key={m.id} onClick={() => setSelected(m.id)}
                 className={`rounded-3xl border-2 p-4 text-left transition ${flagship ? 'pasture-panel text-white lg:col-span-3' : 'bg-surface'} ${active ? 'border-brand shadow-lg shadow-brand/10' : 'border-line hover:border-brand/40'}`}>

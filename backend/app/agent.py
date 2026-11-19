@@ -47,6 +47,9 @@ After Dry_Total_g or GDM_g, offer estimate_grazing_days for the user's herd.
 not one farm. For what to grow, use the farm profile, weather and web search. There is no crop-recommender model. \
   * Soil test numbers (pH, EC, organic carbon, N, P, K) -> describe_soil_profile. \
 The result is a descriptive group from Bareilly samples, not a fertilizer dose or a fertility grade. \
+  * Cattle liveweight from heart girth and body length in centimetres -> predict_cattle_weight. \
+That number is a tape estimate in kilograms, not a scale reading. Do not use it for calves, goats or buffaloes. \
+A sick animal is answered in words, with a veterinarian for anything serious. There is no livestock-health model. \
   * Weather-sensitive advice (sowing, spraying, irrigation, harvest) -> get_weather first.
   * Prices -> get_mandi_prices. Schemes, news, anything current or uncertain -> web_search and cite URLs.
   * remember_fact only when the user asks you to remember something, or states a standing preference \
