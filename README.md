@@ -104,4 +104,4 @@ See `backend/.env.example`. Highlights:
 - Offline-friendly PWA for weak connectivity
 - Expense / yield tracker and herd register with vaccination schedule
 - KVK expert escalation when the agent isn't confident
-- Satellite NDVI (Sentinel-2) of the user's field alongside the biomass model
+- Satellite NDVI (Sentinel-2) of the user's field alongside the biomass model.
